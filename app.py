@@ -69,7 +69,7 @@ def local_css():
         margin: auto;
     }
 
-    .problem-box, div[data-testid="stNumberInput"] input {
+    .problem-box {
         font-family: 'Bungee', cursive !important;
         font-size: 4.5rem !important;
         height: 180px !important;
@@ -82,8 +82,43 @@ def local_css():
         justify-content: center !important;
         margin: 20px auto !important;
         color: #2D3436 !important;
-        line-height: 160px !important;
         text-align: center !important;
+    }
+
+    div[data-testid="stNumberInput"] {
+        height: 160px !important;
+        width: 100% !important;
+        max-width: 700px !important;
+        margin: 10px auto !important;
+        display: flex !important;
+        align-items: stretch !important;
+    }
+    div[data-testid="stNumberInput"] > div {
+        height: 160px !important;
+        width: 100% !important;
+        border: none !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: stretch !important;
+    }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+        height: 160px !important;
+        background: white !important;
+        border: 10px dashed #FF6B6B !important;
+        border-radius: 35px !important;
+    }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] input {
+        height: 160px !important;
+        font-family: 'Bungee', cursive !important;
+        font-size: 4.5rem !important;
+        text-align: center !important;
+        background: transparent !important;
+        border: none !important;
+        color: #2D3436 !important;
+    }
+    div[data-testid="stNumberInput"] button {
+        height: 160px !important;
+        border-radius: 0 35px 35px 0 !important;
     }
 
     div.stButton > button {
@@ -147,6 +182,7 @@ if 'diff' not in st.session_state: st.session_state.diff = "Normal"
 if 'innovamat_type' not in st.session_state: st.session_state.innovamat_type = "Amics"
 if 'problem_text' not in st.session_state: st.session_state.problem_text = ""
 if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
+if 'input_key' not in st.session_state: st.session_state.input_key = 0
 
 def get_new_problem():
     ranges = {"Fàcil": (1, 10), "Normal": (1, 20), "Difícil": (1, 50)}
@@ -245,13 +281,14 @@ else:
     border = "#FF6B6B" if st.session_state.current_block == "Mates" else "#F7D716"
     st.markdown(f"<div class='problem-box' style='border-color:{border};'>{st.session_state.problem_text}</div>", unsafe_allow_html=True)
 
-    user_input = st.number_input("Resultat?", step=1, value=None, format="%d", label_visibility="collapsed")
+    user_input = st.number_input("Resultat?", step=1, value=None, format="%d", label_visibility="collapsed", key=f"input_{st.session_state.input_key}")
     submit = st.button("COMPROVAR! 🚀", use_container_width=True)
     
     st.markdown(f"### ⭐ PUNTS: {st.session_state.score}", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     if submit and user_input is not None:
+        st.session_state.input_key += 1
         if user_input == st.session_state.correct_answer:
             st.session_state.score += 1
             st.session_state.last_status = "correct"
