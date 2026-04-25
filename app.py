@@ -137,8 +137,25 @@ def local_css():
         text-transform: uppercase !important;
     }
 
-    section[data-testid="stSidebar"] { width: 350px !important; }
-    button[data-testid="stSidebarCollapseButton"] { display: none !important; }
+    section[data-testid="stSidebar"] {
+        width: 350px !important;
+        min-width: 350px !important;
+        transform: none !important;
+        visibility: visible !important;
+    }
+    section[data-testid="stSidebar"][aria-expanded="false"] {
+        margin-left: 0 !important;
+        width: 350px !important;
+        min-width: 350px !important;
+    }
+    button[data-testid="stSidebarCollapseButton"],
+    button[aria-label="Close sidebar"],
+    button[aria-label="Collapse sidebar"],
+    button[aria-label="Open sidebar"] {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
     
     [data-testid="stSidebar"] button {
         font-family: 'Bungee', cursive !important;
