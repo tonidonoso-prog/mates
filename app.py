@@ -137,24 +137,83 @@ def local_css():
         text-transform: uppercase !important;
     }
 
-    section[data-testid="stSidebar"] {
-        width: 350px !important;
-        min-width: 350px !important;
-        transform: none !important;
-        visibility: visible !important;
+    /* DESKTOP: sidebar fixa visible */
+    @media (min-width: 768px) {
+        section[data-testid="stSidebar"] {
+            width: 300px !important;
+            min-width: 300px !important;
+            transform: none !important;
+            visibility: visible !important;
+        }
+        section[data-testid="stSidebar"][aria-expanded="false"] {
+            margin-left: 0 !important;
+            width: 300px !important;
+            min-width: 300px !important;
+        }
+        button[data-testid="stSidebarCollapseButton"],
+        button[aria-label="Close sidebar"],
+        button[aria-label="Collapse sidebar"],
+        button[aria-label="Open sidebar"] {
+            display: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        .mobile-controls { display: none !important; }
     }
-    section[data-testid="stSidebar"][aria-expanded="false"] {
-        margin-left: 0 !important;
-        width: 350px !important;
-        min-width: 350px !important;
+
+    /* Botons mobile controls sempre petits */
+    .mobile-controls div.stButton > button {
+        font-size: 1.1rem !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        box-shadow: 0 4px 0px #D63031 !important;
+        margin: 2px auto !important;
+        padding: 0 !important;
     }
-    button[data-testid="stSidebarCollapseButton"],
-    button[aria-label="Close sidebar"],
-    button[aria-label="Collapse sidebar"],
-    button[aria-label="Open sidebar"] {
-        display: none !important;
-        visibility: hidden !important;
-        pointer-events: none !important;
+
+    /* MOBILE: amaga sidebar, mostra controls inline */
+    @media (max-width: 767px) {
+        section[data-testid="stSidebar"] {
+            display: none !important;
+            visibility: hidden !important;
+            width: 0 !important;
+            min-width: 0 !important;
+        }
+        button[data-testid="stSidebarCollapseButton"],
+        button[aria-label="Close sidebar"],
+        button[aria-label="Collapse sidebar"],
+        button[aria-label="Open sidebar"] {
+            display: none !important;
+        }
+        .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            padding-top: 0.5rem !important;
+        }
+        .problem-box {
+            font-size: 3rem !important;
+            height: 120px !important;
+        }
+        div[data-testid="stNumberInput"],
+        div[data-testid="stNumberInput"] > div,
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            height: 110px !important;
+        }
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] input {
+            font-size: 3rem !important;
+            height: 110px !important;
+        }
+        div[data-testid="stNumberInput"] button {
+            height: 110px !important;
+        }
+        div.stButton > button {
+            font-size: 1.6rem !important;
+            height: 70px !important;
+        }
+        .main-card {
+            padding: 1rem !important;
+            border-radius: 20px !important;
+        }
     }
     
     [data-testid="stSidebarUserContent"] {
@@ -318,6 +377,31 @@ else:
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); st.rerun()
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); st.rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
+
+    # Controls mòbil (visibles només en mòbil via CSS)
+    st.markdown("<div class='mobile-controls' style='width:100%; margin-bottom:8px;'>", unsafe_allow_html=True)
+    mcols = st.columns([1,1,1,1] if st.session_state.current_block == "Mates" else [1,1,1])
+    with mcols[0]:
+        if st.button("🏠", use_container_width=True, key="m_home"):
+            st.session_state.current_block = "Home"; st.rerun()
+    if st.session_state.current_block == "Mates":
+        with mcols[1]:
+            if st.button("+" , use_container_width=True, key="m_suma"): st.session_state.mode = "Sumes"; get_new_problem(); st.rerun()
+        with mcols[2]:
+            if st.button("−", use_container_width=True, key="m_resta"): st.session_state.mode = "Restes"; get_new_problem(); st.rerun()
+        with mcols[3]:
+            if st.button("×", use_container_width=True, key="m_mult"): st.session_state.mode = "Multiplicació"; get_new_problem(); st.rerun()
+        diff_cols = st.columns(3)
+    else:
+        diff_cols = mcols[1:]
+    with diff_cols[0] if st.session_state.current_block == "Mates" else mcols[1]:
+        if st.button("F", use_container_width=True, key="m_facil"): st.session_state.diff = "Fàcil"; get_new_problem(); st.rerun()
+    with diff_cols[1] if st.session_state.current_block == "Mates" else mcols[2]:
+        if st.button("N", use_container_width=True, key="m_normal"): st.session_state.diff = "Normal"; get_new_problem(); st.rerun()
+    if st.session_state.current_block == "Mates":
+        with diff_cols[2]:
+            if st.button("D", use_container_width=True, key="m_dificil"): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     title = "MATES" if st.session_state.current_block == "Mates" else "INNOVAMAT"
