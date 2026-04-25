@@ -157,15 +157,45 @@ def local_css():
         pointer-events: none !important;
     }
     
+    [data-testid="stSidebarUserContent"] {
+        padding-top: 0.3rem !important;
+        padding-bottom: 0.3rem !important;
+        overflow: hidden !important;
+    }
+    [data-testid="stSidebarUserContent"] > div {
+        gap: 0 !important;
+    }
+    [data-testid="stSidebar"] h1 {
+        font-size: 1.2rem !important;
+        margin: 0 0 4px 0 !important;
+        padding: 0 !important;
+        line-height: 1.2 !important;
+    }
+    [data-testid="stSidebar"] p {
+        font-size: 0.8rem !important;
+        margin: 4px 0 2px 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
+    [data-testid="stSidebar"] hr {
+        margin: 4px 0 !important;
+        padding: 0 !important;
+    }
     [data-testid="stSidebar"] button {
         font-family: 'Bungee', cursive !important;
-        font-size: 1.1rem !important;
-        height: 48px !important;
-        margin-bottom: 6px !important;
-        border-radius: 12px !important;
+        font-size: 0.95rem !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        margin-bottom: 3px !important;
+        border-radius: 10px !important;
         background: white !important;
         border: 2px solid #FF6B6B !important;
         color: #FF6B6B !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
+    [data-testid="stSidebar"] div.stButton {
+        margin: 0 0 3px 0 !important;
     }
 
     .overlay {
@@ -274,10 +304,9 @@ if st.session_state.current_block == "Home":
 # --- RENDER GAME ---
 else:
     with st.sidebar:
-        st.markdown("<h1 style='text-align: center; color: #FF6B6B; font-family: Bungee; margin-bottom:1rem;'>MENU</h1>", unsafe_allow_html=True)
-        if st.button("🏠 TORNAR AL INICI", use_container_width=True):
+        st.markdown("<h1 style='text-align:center; color:#FF6B6B; font-family:Bungee;'>MENU</h1>", unsafe_allow_html=True)
+        if st.button("🏠 INICI", use_container_width=True):
             st.session_state.current_block = "Home"; st.rerun()
-        st.markdown("---")
         
         if st.session_state.current_block == "Mates":
             st.markdown("<p style='font-weight:700;'>🧮 OPERACIÓ</p>", unsafe_allow_html=True)
