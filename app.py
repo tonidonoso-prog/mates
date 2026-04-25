@@ -162,13 +162,20 @@ def local_css():
     }
 
     /* Botons mobile controls sempre petits */
-    .mobile-controls div.stButton > button {
-        font-size: 1.1rem !important;
-        height: 42px !important;
-        min-height: 42px !important;
+    .mobile-controls-marker + div div.stButton > button {
+        font-size: 1.2rem !important;
+        height: 45px !important;
+        min-height: 45px !important;
         box-shadow: 0 4px 0px #D63031 !important;
         margin: 2px auto !important;
-        padding: 0 !important;
+        text-transform: none !important;
+    }
+
+    @media (min-width: 768px) {
+        div:has(.mobile-controls-marker), 
+        div:has(.mobile-controls-marker) + div { 
+            display: none !important; 
+        }
     }
 
     /* MOBILE: amaga sidebar, mostra controls inline */
@@ -308,7 +315,7 @@ def get_new_problem():
         elif mode == "Multiplicació":
             m_high = 10 if st.session_state.diff != "Difícil" else 12
             st.session_state.num1, st.session_state.num2 = random.randint(1, m_high), random.randint(1, m_high)
-            st.session_state.problem_text = f"{st.session_state.num1} × {st.session_state.num2}"
+            st.session_state.problem_text = f"{st.session_state.num1} x {st.session_state.num2}"
             st.session_state.correct_answer = st.session_state.num1 * st.session_state.num2
             
     elif st.session_state.current_block == "Innovamat":
@@ -327,7 +334,7 @@ def get_new_problem():
             st.session_state.problem_text = f"{target} = {base} + ?"
             st.session_state.correct_answer = target - base
             
-        elif st.session_state.innovamat_type == "Dobit": # Dobles o Meitats
+        elif st.session_state.innovamat_type == "Dobles": # Dobles o Meitats
             type_dm = random.choice(["Doble", "Meitat"])
             if type_dm == "Doble":
                 n = random.randint(1, 12)
@@ -379,29 +386,30 @@ else:
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
 
     # Controls mòbil (visibles només en mòbil via CSS)
-    st.markdown("<div class='mobile-controls' style='width:100%; margin-bottom:8px;'>", unsafe_allow_html=True)
-    mcols = st.columns([1,1,1,1] if st.session_state.current_block == "Mates" else [1,1,1])
-    with mcols[0]:
-        if st.button("🏠", use_container_width=True, key="m_home"):
-            st.session_state.current_block = "Home"; st.rerun()
-    if st.session_state.current_block == "Mates":
-        with mcols[1]:
-            if st.button("+" , use_container_width=True, key="m_suma"): st.session_state.mode = "Sumes"; get_new_problem(); st.rerun()
-        with mcols[2]:
-            if st.button("−", use_container_width=True, key="m_resta"): st.session_state.mode = "Restes"; get_new_problem(); st.rerun()
-        with mcols[3]:
-            if st.button("×", use_container_width=True, key="m_mult"): st.session_state.mode = "Multiplicació"; get_new_problem(); st.rerun()
-        diff_cols = st.columns(3)
-    else:
-        diff_cols = mcols[1:]
-    with diff_cols[0] if st.session_state.current_block == "Mates" else mcols[1]:
-        if st.button("F", use_container_width=True, key="m_facil"): st.session_state.diff = "Fàcil"; get_new_problem(); st.rerun()
-    with diff_cols[1] if st.session_state.current_block == "Mates" else mcols[2]:
-        if st.button("N", use_container_width=True, key="m_normal"): st.session_state.diff = "Normal"; get_new_problem(); st.rerun()
-    if st.session_state.current_block == "Mates":
-        with diff_cols[2]:
-            if st.button("D", use_container_width=True, key="m_dificil"): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div class='mobile-controls-marker'></div>", unsafe_allow_html=True)
+    with st.container():
+        mcols = st.columns([1,1,1,1] if st.session_state.current_block == "Mates" else [1,1,1])
+        with mcols[0]:
+            if st.button("🏠", use_container_width=True, key="m_home"):
+                st.session_state.current_block = "Home"; st.rerun()
+        if st.session_state.current_block == "Mates":
+            with mcols[1]:
+                if st.button(" + ", use_container_width=True, key="m_suma"): st.session_state.mode = "Sumes"; get_new_problem(); st.rerun()
+            with mcols[2]:
+                if st.button(" - ", use_container_width=True, key="m_resta"): st.session_state.mode = "Restes"; get_new_problem(); st.rerun()
+            with mcols[3]:
+                if st.button(" x ", use_container_width=True, key="m_mult"): st.session_state.mode = "Multiplicació"; get_new_problem(); st.rerun()
+            diff_cols = st.columns(3)
+        else:
+            diff_cols = mcols[1:]
+            
+        with diff_cols[0] if st.session_state.current_block == "Mates" else diff_cols[0]:
+            if st.button("F", use_container_width=True, key="m_facil"): st.session_state.diff = "Fàcil"; get_new_problem(); st.rerun()
+        with diff_cols[1] if st.session_state.current_block == "Mates" else diff_cols[1]:
+            if st.button("N", use_container_width=True, key="m_normal"): st.session_state.diff = "Normal"; get_new_problem(); st.rerun()
+        if st.session_state.current_block == "Mates":
+            with diff_cols[2]:
+                if st.button("D", use_container_width=True, key="m_dificil"): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     title = "MATES" if st.session_state.current_block == "Mates" else "INNOVAMAT"
