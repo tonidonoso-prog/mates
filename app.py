@@ -509,9 +509,9 @@ elif st.session_state.current_block == "Lectura":
     
     if st.button("LLEGIT! ✅", use_container_width=True):
         elapsed = time.time() - st.session_state.word_start_time
-        # Velocitat del rival segons nivell
-        rival_speed_map = {"Fàcil": 1.5, "Normal": 2.5, "Difícil": 4.0}
-        rival_move = elapsed * rival_speed_map.get(st.session_state.diff, 2.0)
+        # Velocitat del rival segons nivell (més ràpid ara)
+        rival_speed_map = {"Fàcil": 1.5, "Normal": 4.5, "Difícil": 8.0}
+        rival_move = elapsed * rival_speed_map.get(st.session_state.diff, 3.0)
         
         st.session_state.reading_pos += 10
         st.session_state.rival_pos += rival_move
