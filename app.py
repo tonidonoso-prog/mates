@@ -172,11 +172,14 @@ def local_css():
     }
 
     @media (min-width: 768px) {
-        div:has(> .mobile-marker), 
-        div:has(> .mobile-marker) + div { 
-            display: none !important; 
+        /* Hide the marker container and the next 2 siblings (container + spacing) */
+        div.element-container:has(.mobile-marker),
+        div.element-container:has(.mobile-marker) + div,
+        div.element-container:has(.mobile-marker) + div + div {
+            display: none !important;
         }
     }
+
 
 
 
@@ -414,6 +417,8 @@ else:
     st.markdown("<div class='mobile-marker'></div>", unsafe_allow_html=True)
     with st.container():
 
+
+
         # Botó Inici
 
         if st.button("🏠 INICI", key="m_home_full", use_container_width=True):
@@ -445,6 +450,7 @@ else:
         with d_cols[2]:
             if st.button("DIFÍCIL", key="m_dificil", use_container_width=True):
                 st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
+
 
 
 
