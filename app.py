@@ -12,26 +12,26 @@ st.set_page_config(
 )
 
 CELEBRATION_GIFS = [
-    "https://media.giphy.com/media/11sBLVxNs7v6WA/giphy.gif", # Minions Clapping
-    "https://media.giphy.com/media/3og0IPxMM0erATuepW/giphy.gif", # Minions Happy
-    "https://media.giphy.com/media/l2SpY6f8T7rN9Lw4k/giphy.gif", # Olaf
-    "https://media.giphy.com/media/26gs6Nf8l8lZ6mN6E/giphy.gif", # Mickey
-    "https://media.giphy.com/media/10YqP0o74U9XwY/giphy.gif", # Paw Patrol
-    "https://media.giphy.com/media/3o7abKhOpuMcmLjdcI/giphy.gif", # SpongeBob
-    "https://media.giphy.com/media/oA6pvtUa3rZhm/giphy.gif", # Donald Duck
-    "https://media.giphy.com/media/26u4lOMA8JKSXvLKE/giphy.gif", # Stitch
-    "https://media.giphy.com/media/11fSZZ8csP8G3e/giphy.gif", # Nemo
-    "https://media.giphy.com/media/3o7TKDkDbIDJieKbVm/giphy.gif", # Monsters Inc
-    "https://media.giphy.com/media/S98fuEoS5zIFG/giphy.gif", # Shrek
-    "https://media.giphy.com/media/11hVniWsyRKISY/giphy.gif", # Buzz Lightyear
-    "https://media.giphy.com/media/M9ZJ8E0Y4k1vG/giphy.gif", # Dance
-    "https://media.giphy.com/media/jK8pM1Uu0C9S8/giphy.gif", # Minions
-    "https://media.giphy.com/media/l0HlU9jXyXyXyXyXy/giphy.gif", # Happy
-    "https://media.giphy.com/media/11sBLVxNs7v6WA/giphy.gif", # Minions 2
-    "https://media.giphy.com/media/3og0IPxMM0erATuepW/giphy.gif", # Minions 3
-    "https://media.giphy.com/media/l2SpY6f8T7rN9Lw4k/giphy.gif", # Frozen
-    "https://media.giphy.com/media/26gs6Nf8l8lZ6mN6E/giphy.gif", # Mickey 2
-    "https://media.giphy.com/media/10YqP0o74U9XwY/giphy.gif"  # Paw Patrol 2
+    "https://i.giphy.com/W6Lwg2xvTr6tJpuSTd.gif",
+    "https://i.giphy.com/fBqWECovT0PecZSZDt.gif",
+    "https://i.giphy.com/osMIREQbo3s2c.gif",
+    "https://i.giphy.com/HJQObm4T6xS2Q.gif",
+    "https://i.giphy.com/5UClVovgaIZw4C8LME.gif",
+    "https://i.giphy.com/DCgM3qgbE6t4hIBb53.gif",
+    "https://i.giphy.com/aQYR1p8saOQla.gif",
+    "https://i.giphy.com/0WQXGB5aOPLdBRFWyH.gif",
+    "https://i.giphy.com/AcfTF7tyikWyroP0x7.gif",
+    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif",
+    "https://i.giphy.com/Z8wxB5I34Wl9Rx0ilC.gif",
+    "https://i.giphy.com/hnO8IeGMDcJ7TViI0j.gif",
+    "https://i.giphy.com/WeKF4hw0B39YbpMR7M.gif",
+    "https://i.giphy.com/bP9S3BMElQ5XAWQIR3.gif",
+    "https://i.giphy.com/BS7Y53mkeqngi9Jpvl.gif",
+    "https://i.giphy.com/iUYOGrSiLpTvaWz1FE.gif",
+    "https://i.giphy.com/ECgGYKyCToaGY.gif",
+    "https://i.giphy.com/dxAw1xsUcd4NW.gif",
+    "https://i.giphy.com/TdfyKrN7HGTIY.gif",
+    "https://i.giphy.com/GWNBoSxSpt7Ik.gif"
 ]
 
 CELEBRATION_MESSAGES = [
