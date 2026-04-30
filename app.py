@@ -11,6 +11,29 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+CELEBRATION_GIFS = [
+    "https://media.giphy.com/media/11sBLVxNs7v6WA/giphy.gif", # Minions Clapping
+    "https://media.giphy.com/media/3og0IPxMM0erATuepW/giphy.gif", # Minions Happy
+    "https://media.giphy.com/media/l2SpY6f8T7rN9Lw4k/giphy.gif", # Olaf
+    "https://media.giphy.com/media/26gs6Nf8l8lZ6mN6E/giphy.gif", # Mickey
+    "https://media.giphy.com/media/10YqP0o74U9XwY/giphy.gif", # Paw Patrol
+    "https://media.giphy.com/media/3o7abKhOpuMcmLjdcI/giphy.gif", # SpongeBob
+    "https://media.giphy.com/media/oA6pvtUa3rZhm/giphy.gif", # Donald Duck
+    "https://media.giphy.com/media/26u4lOMA8JKSXvLKE/giphy.gif", # Stitch
+    "https://media.giphy.com/media/11fSZZ8csP8G3e/giphy.gif", # Nemo
+    "https://media.giphy.com/media/3o7TKDkDbIDJieKbVm/giphy.gif", # Monsters Inc
+    "https://media.giphy.com/media/S98fuEoS5zIFG/giphy.gif", # Shrek
+    "https://media.giphy.com/media/11hVniWsyRKISY/giphy.gif", # Buzz Lightyear
+    "https://media.giphy.com/media/M9ZJ8E0Y4k1vG/giphy.gif", # Dance
+    "https://media.giphy.com/media/jK8pM1Uu0C9S8/giphy.gif", # Minions
+    "https://media.giphy.com/media/l0HlU9jXyXyXyXyXy/giphy.gif", # Happy
+    "https://media.giphy.com/media/11sBLVxNs7v6WA/giphy.gif", # Minions 2
+    "https://media.giphy.com/media/3og0IPxMM0erATuepW/giphy.gif", # Minions 3
+    "https://media.giphy.com/media/l2SpY6f8T7rN9Lw4k/giphy.gif", # Frozen
+    "https://media.giphy.com/media/26gs6Nf8l8lZ6mN6E/giphy.gif", # Mickey 2
+    "https://media.giphy.com/media/10YqP0o74U9XwY/giphy.gif"  # Paw Patrol 2
+]
+
 # Custom CSS for THE PERFECT UI
 def local_css():
     st.markdown("""
@@ -556,10 +579,12 @@ else:
 
     if st.session_state.last_status:
         if st.session_state.last_status == "correct":
+            # Tria un GIF aleatori dels 20
+            selected_gif = random.choice(CELEBRATION_GIFS)
             # Popup GIF centrat
             st.markdown(f'''
                 <div class="gif-overlay">
-                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJmZzZ4NmlyOGJ4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/11sBLVxNs7v6WA/giphy.gif">
+                    <img src="{selected_gif}">
                     <h1 style="font-family:'Bungee'; color:#FF6B6B; font-size:4rem; margin-top:20px; text-shadow: 3px 3px 0px white;">MOLT BÉ! 🎉</h1>
                 </div>
             ''', unsafe_allow_html=True)
