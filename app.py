@@ -230,36 +230,36 @@ def local_css():
 
     
     [data-testid="stSidebarUserContent"] {
-        padding-top: 0.3rem !important;
-        padding-bottom: 0.3rem !important;
+        padding-top: 0.1rem !important;
+        padding-bottom: 0.1rem !important;
         overflow: hidden !important;
     }
     [data-testid="stSidebarUserContent"] > div {
-        gap: 0 !important;
+        gap: 2px !important;
     }
     [data-testid="stSidebar"] h1 {
-        font-size: 1.2rem !important;
-        margin: 0 0 4px 0 !important;
+        font-size: 1.1rem !important;
+        margin: 0 0 2px 0 !important;
         padding: 0 !important;
-        line-height: 1.2 !important;
+        line-height: 1.1 !important;
     }
     [data-testid="stSidebar"] p {
-        font-size: 0.8rem !important;
-        margin: 4px 0 2px 0 !important;
+        font-size: 0.75rem !important;
+        margin: 2px 0 1px 0 !important;
         padding: 0 !important;
         line-height: 1 !important;
     }
     [data-testid="stSidebar"] hr {
-        margin: 4px 0 !important;
+        margin: 2px 0 !important;
         padding: 0 !important;
     }
     [data-testid="stSidebar"] button {
         font-family: 'Bungee', cursive !important;
-        font-size: 0.95rem !important;
-        height: 38px !important;
-        min-height: 38px !important;
-        margin-bottom: 3px !important;
-        border-radius: 10px !important;
+        font-size: 0.85rem !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        margin-bottom: 2px !important;
+        border-radius: 8px !important;
         background: white !important;
         border: 2px solid #FF6B6B !important;
         color: #FF6B6B !important;
@@ -267,7 +267,7 @@ def local_css():
         line-height: 1 !important;
     }
     [data-testid="stSidebar"] div.stButton {
-        margin: 0 0 3px 0 !important;
+        margin: 0 0 2px 0 !important;
     }
 
     .overlay {
@@ -413,7 +413,7 @@ else:
             
         # Bloc 1: Operacions (si és Mates)
         if st.session_state.current_block == "Mates":
-            st.markdown("<p style='text-align:center; font-weight:700; margin:0; font-size:0.8rem;'>OPERACIÓ</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>OPERACIÓ</p>", unsafe_allow_html=True)
             op_cols = st.columns(3)
             with op_cols[0]:
                 if st.button("SUMA", key="m_suma", use_container_width=True):
@@ -426,7 +426,7 @@ else:
                     st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
         
         # Bloc 2: Dificultat
-        st.markdown("<p style='text-align:center; font-weight:700; margin:0; font-size:0.8rem;'>DIFICULTAT</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>DIFICULTAT</p>", unsafe_allow_html=True)
         d_cols = st.columns(3)
         with d_cols[0]:
             if st.button("FÀCIL", key="m_facil", use_container_width=True):
