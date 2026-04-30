@@ -205,10 +205,25 @@ def local_css():
             visibility: hidden !important;
         }
         .main-card { width: 98% !important; padding: 1rem !important; margin-top: 0 !important;}
-        .problem-box { font-size: 2.5rem !important; height: 100px !important; }
-        div.stButton > button { font-size: 1.4rem !important; height: 60px !important; }
-        .race-track { height: 70px !important; }
-        .car { font-size: 1.8rem !important; }
+        .problem-box { 
+            font-size: 1.8rem !important; 
+            height: auto !important; 
+            min-height: 80px !important; 
+            padding: 10px !important;
+            line-height: 1.2 !important;
+        }
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] input {
+            font-size: 2.2rem !important;
+            height: 80px !important;
+        }
+        div[data-testid="stNumberInput"], 
+        div[data-testid="stNumberInput"] > div,
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            height: 80px !important;
+        }
+        div.stButton > button { font-size: 1.3rem !important; height: 55px !important; }
+        .race-track { height: 60px !important; }
+        .car { font-size: 1.5rem !important; }
     }
 
     .gif-overlay {
