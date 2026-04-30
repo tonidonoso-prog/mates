@@ -12,26 +12,26 @@ st.set_page_config(
 )
 
 CELEBRATION_GIFS = [
-    "https://i.giphy.com/W6Lwg2xvTr6tJpuSTd.gif",
-    "https://i.giphy.com/fBqWECovT0PecZSZDt.gif",
-    "https://i.giphy.com/osMIREQbo3s2c.gif",
-    "https://i.giphy.com/HJQObm4T6xS2Q.gif",
-    "https://i.giphy.com/5UClVovgaIZw4C8LME.gif",
-    "https://i.giphy.com/DCgM3qgbE6t4hIBb53.gif",
-    "https://i.giphy.com/aQYR1p8saOQla.gif",
-    "https://i.giphy.com/0WQXGB5aOPLdBRFWyH.gif",
-    "https://i.giphy.com/AcfTF7tyikWyroP0x7.gif",
-    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif",
-    "https://i.giphy.com/Z8wxB5I34Wl9Rx0ilC.gif",
-    "https://i.giphy.com/hnO8IeGMDcJ7TViI0j.gif",
-    "https://i.giphy.com/WeKF4hw0B39YbpMR7M.gif",
-    "https://i.giphy.com/bP9S3BMElQ5XAWQIR3.gif",
-    "https://i.giphy.com/BS7Y53mkeqngi9Jpvl.gif",
-    "https://i.giphy.com/iUYOGrSiLpTvaWz1FE.gif",
-    "https://i.giphy.com/ECgGYKyCToaGY.gif",
-    "https://i.giphy.com/dxAw1xsUcd4NW.gif",
-    "https://i.giphy.com/TdfyKrN7HGTIY.gif",
-    "https://i.giphy.com/GWNBoSxSpt7Ik.gif"
+    "https://i.giphy.com/M9ZJ8E0Y4k1vG.gif", # Minions
+    "https://i.giphy.com/f68vS1NidvUu4.gif", # Minions
+    "https://i.giphy.com/jK8pM1Uu0C9S8.gif", # Minions
+    "https://i.giphy.com/3og0IPxMM0erATuepW.gif", # Minions
+    "https://i.giphy.com/11sBLVxNs7v6WA.gif", # Minions
+    "https://i.giphy.com/26gs6Nf8l8lZ6mN6E.gif", # Mickey
+    "https://i.giphy.com/l2SpY6f8T7rN9Lw4k.gif", # Olaf
+    "https://i.giphy.com/hnO8IeGMDcJ7TViI0j.gif", # Stitch
+    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif", # Stitch
+    "https://i.giphy.com/aQYR1p8saOQla.gif", # Stitch
+    "https://i.giphy.com/10YqP0o74U9XwY.gif", # Chase
+    "https://i.giphy.com/26u4lOMA8JKSXvLKE.gif", # Paw Patrol
+    "https://i.giphy.com/BS7Y53mkeqngi9Jpvl.gif", # Marshall
+    "https://i.giphy.com/3o7abKhOpuMcmLjdcI.gif", # SpongeBob
+    "https://i.giphy.com/n9886h6HdfiTe.gif", # Patrick
+    "https://i.giphy.com/l4KhQo2MESJkc6LUs.gif", # SpongeBob
+    "https://i.giphy.com/3o7TKDkDbIDJieKbVm.gif", # Mike
+    "https://i.giphy.com/11hVniWsyRKISY.gif", # Buzz
+    "https://i.giphy.com/11fSZZ8csP8G3e.gif", # Nemo
+    "https://i.giphy.com/S98fuEoS5zIFG.gif"  # Shrek
 ]
 
 CELEBRATION_MESSAGES = [
@@ -466,13 +466,13 @@ def get_new_problem():
 
 # --- RENDER HOME ---
 if st.session_state.current_block == "Home":
-    col_img, col_title = st.columns([0.5, 3.5])
+    col_img, col_title = st.columns([1, 3])
     with col_img:
         if Path("mascot.png").exists():
-            st.image("mascot.png", width=80)
+            st.image("mascot.png", use_container_width=True)
     with col_title:
-        st.markdown("<h1 style='text-align:left; font-family:Bungee; font-size:1.8rem; color:#FF6B6B; margin-bottom:0; line-height:1.2;'>AVENTURA MATEMÀTICA</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:left; font-size:1rem; margin-bottom:1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:left; font-family:Bungee; font-size:3.5rem; color:#FF6B6B; margin-bottom:0; line-height:1;'>AVENTURA MATEMÀTICA</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:left; font-size:1.5rem; margin-bottom:1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
