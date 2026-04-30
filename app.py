@@ -38,9 +38,7 @@ CELEBRATION_MESSAGES = [
     "MOLT BÉ!", "FANTÀSTIC!", "QUIN NIVELL!", "IMPRESSIONANT!", "BRUTAL!",
     "GENIAL!", "SUPERBÉ!", "HO HAS CLAVAT!", "MOLT BONA FEINA!", "INCREÏBLE!",
     "CONTINUA AIXÍ!", "IMBATIBLE!", "QUINA PRECISIÓ!", "UN 10!", "HO HAS ACONSEGUIT!",
-    "MÀGIC!", "ESPECTACULAR!", "MOLT BEN PENSAT!", "BRAVO!", "ÈXIT TOTAL!",
-    "QUINA MÀQUINA!", "QUINA VELOCITAT!", "MESTRATGE TOTAL!", "HO FAS MOLT BÉ!", 
-    "ESTÀS ON FIRE!", "SENSACIONAL!", "MAGNÍFIC!", "EXCEL·LENT!", "MOLT BON TREBALL!", "OBJECTIU COMPLERT!"
+    "MÀGIC!", "ESPECTACULAR!", "MOLT BEN PENSAT!", "BRAVO!", "ÈXIT TOTAL!"
 ]
 
 # Custom CSS for THE PERFECT UI
@@ -375,6 +373,8 @@ if 'innovamat_type' not in st.session_state: st.session_state.innovamat_type = "
 if 'problem_text' not in st.session_state: st.session_state.problem_text = ""
 if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
+if 'used_gifs' not in st.session_state: st.session_state.used_gifs = []
+if 'used_msgs' not in st.session_state: st.session_state.used_msgs = []
 
 def get_new_problem():
     ranges = {"Fàcil": (1, 10), "Normal": (1, 50), "Difícil": (1, 200)}
@@ -571,9 +571,21 @@ else:
 
     if st.session_state.last_status:
         if st.session_state.last_status == "correct":
-            # Tria aleatòriament GIF i Missatge
-            selected_gif = random.choice(CELEBRATION_GIFS)
-            selected_msg = random.choice(CELEBRATION_MESSAGES)
+            # Tria aleatòriament GIF i Missatge sense repetir
+            available_gifs = [g for g in CELEBRATION_GIFS if g not in st.session_state.used_gifs]
+            if not available_gifs:
+                st.session_state.used_gifs = []
+                available_gifs = CELEBRATION_GIFS
+            selected_gif = random.choice(available_gifs)
+            st.session_state.used_gifs.append(selected_gif)
+            
+            available_msgs = [m for m in CELEBRATION_MESSAGES if m not in st.session_state.used_msgs]
+            if not available_msgs:
+                st.session_state.used_msgs = []
+                available_msgs = CELEBRATION_MESSAGES
+            selected_msg = random.choice(available_msgs)
+            st.session_state.used_msgs.append(selected_msg)
+            
             # Popup GIF centrat
             st.markdown(f'''
                 <div class="gif-overlay">
