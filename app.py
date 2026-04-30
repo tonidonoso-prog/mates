@@ -98,7 +98,9 @@ def get_new_problem():
                 st.session_state.problem_text, st.session_state.correct_answer = f"{target} = {base} + ?", target - base
             elif t == "Dobles":
                 type_dm = "Doble" if st.session_state.diff == "Fàcil" else random.choice(["Doble", "Meitat"])
-                n = random.randint(1, 50); if type_dm == "Meitat": n = (n // 2) * 2
+                n = random.randint(1, 50)
+                if type_dm == "Meitat":
+                    n = (n // 2) * 2
                 st.session_state.problem_text, st.session_state.correct_answer = f"{type_dm.upper()} DE {n}", n * 2 if type_dm == "Doble" else n // 2
             elif t == "Sèries":
                 s, stp = random.randint(1, 30), random.randint(2, 10)
