@@ -172,10 +172,12 @@ def local_css():
     }
 
     @media (min-width: 768px) {
-        div[data-testid="stVerticalBlock"]:has(#mobile-trigger) {
-            display: none !important;
+        div:has(> .mobile-marker), 
+        div:has(> .mobile-marker) + div { 
+            display: none !important; 
         }
     }
+
 
 
 
@@ -409,8 +411,9 @@ else:
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
     # Controls mòbil (visibles només en mòbil via CSS)
+    st.markdown("<div class='mobile-marker'></div>", unsafe_allow_html=True)
     with st.container():
-        st.markdown("<span id='mobile-trigger'></span>", unsafe_allow_html=True)
+
         # Botó Inici
 
         if st.button("🏠 INICI", key="m_home_full", use_container_width=True):
