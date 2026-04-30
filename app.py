@@ -34,6 +34,15 @@ CELEBRATION_GIFS = [
     "https://media.giphy.com/media/10YqP0o74U9XwY/giphy.gif"  # Paw Patrol 2
 ]
 
+CELEBRATION_MESSAGES = [
+    "MOLT BÉ!", "FANTÀSTIC!", "ETS UN CRAC!", "IMPRESSIONANT!", "BRUTAL!",
+    "GENIAL!", "SUPERBÉ!", "HO HAS CLAVAT!", "QUIN NIVELL!", "ETS UN GENI!",
+    "INCREÏBLE!", "MOLT BONA FEINA!", "CONTINUA AIXÍ!", "ETS IMBATIBLE!", "QUINA PRECISIÓ!",
+    "UN 10 PER A TU!", "HO HAS ACONSEGUIT!", "MÀGIC!", "ESPECTACULAR!", "MOLT BEN PENSAT!",
+    "BRAVO!", "ÈXIT TOTAL!", "ETS UNA MÀQUINA!", "QUINA VELOCITAT!", "MESTRE DE LES MATES!",
+    "HO FAS SEMBLAR FÀCIL!", "ESTÀS ON FIRE!", "SENSACIONAL!", "MAGNÍFIC!", "ETS EL MILLOR!"
+]
+
 # Custom CSS for THE PERFECT UI
 def local_css():
     st.markdown("""
@@ -406,19 +415,6 @@ def get_new_problem():
             st.session_state.problem_text = f"{st.session_state.num1} x {st.session_state.num2}"
             st.session_state.correct_answer = st.session_state.num1 * st.session_state.num2
             
-        elif mode == "Divisió":
-            if st.session_state.diff == "Fàcil":
-                st.session_state.num2 = random.choice([2, 5, 10])
-                st.session_state.num1 = st.session_state.num2 * random.randint(1, 10)
-            elif st.session_state.diff == "Normal":
-                st.session_state.num2 = random.randint(2, 10)
-                st.session_state.num1 = st.session_state.num2 * random.randint(2, 12)
-            else: # Difícil
-                st.session_state.num2 = random.randint(3, 15)
-                st.session_state.num1 = st.session_state.num2 * random.randint(5, 20)
-            st.session_state.problem_text = f"{st.session_state.num1} : {st.session_state.num2}"
-            st.session_state.correct_answer = st.session_state.num1 // st.session_state.num2
-            
     elif st.session_state.current_block == "Innovamat":
         types = ["Amics", "Descompon", "Dobles", "Sèries", "Piràmide"]
         st.session_state.innovamat_type = random.choice(types)
@@ -501,7 +497,6 @@ else:
             if st.button("SUMA", use_container_width=True): st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
             if st.button("RESTA", use_container_width=True): st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
             if st.button("MULTIPLICACIÓ", use_container_width=True): st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
-            if st.button("DIVISIÓ", use_container_width=True): st.session_state.mode = "Divisió"; get_new_problem(); safe_rerun()
         
         st.markdown("<p style='font-weight:700;'>📈 NIVELL</p>", unsafe_allow_html=True)
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
@@ -521,7 +516,7 @@ else:
         # Bloc 1: Operacions (si és Mates)
         if st.session_state.current_block == "Mates":
             st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>OPERACIÓ</p>", unsafe_allow_html=True)
-            op_cols = st.columns(4)
+            op_cols = st.columns(3)
             with op_cols[0]:
                 if st.button("SUMA", key="m_suma", use_container_width=True):
                     st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
@@ -531,9 +526,6 @@ else:
             with op_cols[2]:
                 if st.button("MULT", key="m_mult", use_container_width=True):
                     st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
-            with op_cols[3]:
-                if st.button("DIV", key="m_div", use_container_width=True):
-                    st.session_state.mode = "Divisió"; get_new_problem(); safe_rerun()
         
         # Bloc 2: Dificultat
         st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>DIFICULTAT</p>", unsafe_allow_html=True)
@@ -579,13 +571,14 @@ else:
 
     if st.session_state.last_status:
         if st.session_state.last_status == "correct":
-            # Tria un GIF aleatori dels 20
+            # Tria aleatòriament GIF i Missatge
             selected_gif = random.choice(CELEBRATION_GIFS)
+            selected_msg = random.choice(CELEBRATION_MESSAGES)
             # Popup GIF centrat
             st.markdown(f'''
                 <div class="gif-overlay">
                     <img src="{selected_gif}">
-                    <h1 style="font-family:'Bungee'; color:#FF6B6B; font-size:4rem; margin-top:20px; text-shadow: 3px 3px 0px white;">MOLT BÉ! 🎉</h1>
+                    <h1 style="font-family:'Bungee'; color:#FF6B6B; font-size:4rem; margin-top:20px; text-shadow: 3px 3px 0px white;">{selected_msg} 🎉</h1>
                 </div>
             ''', unsafe_allow_html=True)
         else:
