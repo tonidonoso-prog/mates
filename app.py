@@ -466,13 +466,13 @@ def get_new_problem():
 
 # --- RENDER HOME ---
 if st.session_state.current_block == "Home":
-    col_img, col_title = st.columns([1, 3])
+    col_img, col_title = st.columns([0.5, 3.5])
     with col_img:
         if Path("mascot.png").exists():
-            st.image("mascot.png", use_container_width=True)
+            st.image("mascot.png", width=80)
     with col_title:
-        st.markdown("<h1 style='text-align:left; font-family:Bungee; font-size:3.5rem; color:#FF6B6B; margin-bottom:0; line-height:1;'>AVENTURA MATEMÀTICA</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:left; font-size:1.5rem; margin-bottom:1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:left; font-family:Bungee; font-size:1.8rem; color:#FF6B6B; margin-bottom:0; line-height:1.2;'>AVENTURA MATEMÀTICA</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:left; font-size:1rem; margin-bottom:1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
