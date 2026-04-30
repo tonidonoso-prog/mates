@@ -264,6 +264,7 @@ if 'innovamat_type' not in st.session_state: st.session_state.innovamat_type = "
 if 'reading_pos' not in st.session_state: st.session_state.reading_pos = 0
 if 'rival_pos' not in st.session_state: st.session_state.rival_pos = 0
 if 'reading_word' not in st.session_state: st.session_state.reading_word = ""
+if 'word_start_time' not in st.session_state: st.session_state.word_start_time = time.time()
 if 'problem_text' not in st.session_state: st.session_state.problem_text = ""
 if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
@@ -343,6 +344,7 @@ def get_new_problem():
     elif st.session_state.current_block == "Lectura":
         words = LECTURA_WORDS.get(st.session_state.diff, LECTURA_WORDS["Fàcil"])
         st.session_state.reading_word = random.choice(words)
+        st.session_state.word_start_time = time.time() # Reset timer
 
 # --- RENDER HOME ---
 if st.session_state.current_block == "Home":
@@ -457,16 +459,22 @@ elif st.session_state.current_block == "Lectura":
     st.markdown("<div class='main-card' style='border-color:#4BCffa;'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#4BCffa; font-family:Bungee;'>CURSA DE PARAULES • {st.session_state.diff.upper()}</h2>", unsafe_allow_html=True)
     
-    st.markdown("<p style='text-align:left; margin-bottom:2px; font-size:0.8rem;'>TU (Blau)</p>", unsafe_allow_html=True)
-    st.markdown(f'''<div class="race-track"><div class="car" style="left: {st.session_state.reading_pos}%;">🏎️</div></div>''', unsafe_allow_html=True)
+    st.markdown("<p style='text-align:left; margin-bottom:2px; font-size:0.8rem;'>TU (Verd)</p>", unsafe_allow_html=True)
+    st.markdown(f'''<div class="race-track"><div class="car" style="left: {st.session_state.reading_pos}%; filter: hue-rotate(90deg);">🏎️</div></div>''', unsafe_allow_html=True)
     st.markdown("<p style='text-align:left; margin-bottom:2px; font-size:0.8rem;'>RIVAL (Vermell)</p>", unsafe_allow_html=True)
-    st.markdown(f'''<div class="race-track" style="background:#555;"><div class="car" style="left: {st.session_state.rival_pos}%; filter: hue-rotate(140deg);">🏎️</div></div>''', unsafe_allow_html=True)
+    st.markdown(f'''<div class="race-track" style="background:#555;"><div class="car" style="left: {st.session_state.rival_pos}%;">🏎️</div></div>''', unsafe_allow_html=True)
 
     st.markdown(f"<div class='problem-box' style='border-color:#4BCffa; font-size:4rem;'>{st.session_state.reading_word}</div>", unsafe_allow_html=True)
     
     if st.button("LLEGIT! ✅", use_container_width=True):
-        st.session_state.reading_pos += 8
-        st.session_state.rival_pos += random.randint(3, 7)
+        elapsed = time.time() - st.session_state.word_start_time
+        # Velocitat del rival segons nivell
+        rival_speed_map = {"Fàcil": 1.5, "Normal": 2.5, "Difícil": 4.0}
+        rival_move = elapsed * rival_speed_map.get(st.session_state.diff, 2.0)
+        
+        st.session_state.reading_pos += 10
+        st.session_state.rival_pos += rival_move
+        
         if st.session_state.reading_pos >= 90:
             st.session_state.last_status = "correct"
             st.session_state.reading_pos = 0; st.session_state.rival_pos = 0
