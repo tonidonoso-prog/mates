@@ -321,59 +321,105 @@ if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
 
 def get_new_problem():
-    ranges = {"Fàcil": (1, 10), "Normal": (1, 20), "Difícil": (1, 50)}
+    ranges = {"Fàcil": (1, 10), "Normal": (1, 50), "Difícil": (1, 200)}
     low, high = ranges.get(st.session_state.diff, (1, 10))
     
     if st.session_state.current_block == "Mates":
         mode = st.session_state.mode
         if mode == "Sumes":
-            st.session_state.num1, st.session_state.num2 = random.randint(low, high), random.randint(low, high)
+            if st.session_state.diff == "Difícil":
+                st.session_state.num1, st.session_state.num2 = random.randint(50, 250), random.randint(50, 250)
+            elif st.session_state.diff == "Normal":
+                st.session_state.num1, st.session_state.num2 = random.randint(10, 100), random.randint(10, 100)
+            else:
+                st.session_state.num1, st.session_state.num2 = random.randint(1, 15), random.randint(1, 15)
             st.session_state.problem_text = f"{st.session_state.num1} + {st.session_state.num2}"
             st.session_state.correct_answer = st.session_state.num1 + st.session_state.num2
+            
         elif mode == "Restes":
-            st.session_state.num1 = random.randint(low + 5, high + 5)
-            st.session_state.num2 = random.randint(1, st.session_state.num1)
+            if st.session_state.diff == "Difícil":
+                st.session_state.num1 = random.randint(100, 500)
+                st.session_state.num2 = random.randint(50, st.session_state.num1)
+            elif st.session_state.diff == "Normal":
+                st.session_state.num1 = random.randint(20, 100)
+                st.session_state.num2 = random.randint(1, st.session_state.num1)
+            else:
+                st.session_state.num1 = random.randint(5, 20)
+                st.session_state.num2 = random.randint(1, st.session_state.num1)
             st.session_state.problem_text = f"{st.session_state.num1} - {st.session_state.num2}"
             st.session_state.correct_answer = st.session_state.num1 - st.session_state.num2
+            
         elif mode == "Multiplicació":
-            m_high = 10 if st.session_state.diff != "Difícil" else 12
-            st.session_state.num1, st.session_state.num2 = random.randint(1, m_high), random.randint(1, m_high)
+            if st.session_state.diff == "Fàcil":
+                st.session_state.num1, st.session_state.num2 = random.randint(1, 5), random.randint(1, 10)
+            elif st.session_state.diff == "Normal":
+                st.session_state.num1, st.session_state.num2 = random.randint(2, 10), random.randint(2, 10)
+            else: # Difícil
+                st.session_state.num1, st.session_state.num2 = random.randint(2, 15), random.randint(11, 25)
             st.session_state.problem_text = f"{st.session_state.num1} x {st.session_state.num2}"
             st.session_state.correct_answer = st.session_state.num1 * st.session_state.num2
             
+        elif mode == "Divisió":
+            if st.session_state.diff == "Fàcil":
+                st.session_state.num2 = random.choice([2, 5, 10])
+                st.session_state.num1 = st.session_state.num2 * random.randint(1, 10)
+            elif st.session_state.diff == "Normal":
+                st.session_state.num2 = random.randint(2, 10)
+                st.session_state.num1 = st.session_state.num2 * random.randint(2, 12)
+            else: # Difícil
+                st.session_state.num2 = random.randint(3, 15)
+                st.session_state.num1 = st.session_state.num2 * random.randint(5, 20)
+            st.session_state.problem_text = f"{st.session_state.num1} : {st.session_state.num2}"
+            st.session_state.correct_answer = st.session_state.num1 // st.session_state.num2
+            
     elif st.session_state.current_block == "Innovamat":
-        types = ["Amics", "Descompon", "Dobles", "Sèries"]
+        types = ["Amics", "Descompon", "Dobles", "Sèries", "Piràmide"]
         st.session_state.innovamat_type = random.choice(types)
         
         if st.session_state.innovamat_type == "Amics":
-            target = random.choice([10, 20, 100] if st.session_state.diff == "Difícil" else [10, 20])
+            target = random.choice([10, 20, 100, 1000] if st.session_state.diff == "Difícil" else [10, 20, 100])
             n1 = random.randint(1, target - 1)
             st.session_state.problem_text = f"{n1} + ? = {target}"
             st.session_state.correct_answer = target - n1
             
         elif st.session_state.innovamat_type == "Descompon":
-            target = random.randint(low + 10, high + 10)
-            base = (target // 10) * 10
-            st.session_state.problem_text = f"{target} = {base} + ?"
+            if st.session_state.diff == "Difícil":
+                target = random.randint(100, 999)
+                base = (target // 100) * 100
+                st.session_state.problem_text = f"{target} = {base} + ?"
+            else:
+                target = random.randint(low + 10, high + 10)
+                base = (target // 10) * 10
+                st.session_state.problem_text = f"{target} = {base} + ?"
             st.session_state.correct_answer = target - base
             
-        elif st.session_state.innovamat_type == "Dobles": # Dobles o Meitats
+        elif st.session_state.innovamat_type == "Dobles":
             type_dm = random.choice(["Doble", "Meitat"])
-            if type_dm == "Doble":
-                n = random.randint(1, 12)
-                st.session_state.problem_text = f"EL DOBLE DE {n}"
-                st.session_state.correct_answer = n * 2
+            if st.session_state.diff == "Difícil":
+                n = random.randint(25, 150) if type_dm == "Doble" else random.randint(20, 200) * 2
             else:
-                n = random.randint(1, 10) * 2
-                st.session_state.problem_text = f"LA MEITAT DE {n}"
-                st.session_state.correct_answer = n // 2
+                n = random.randint(1, 20) if type_dm == "Doble" else random.randint(1, 20) * 2
+            st.session_state.problem_text = f"{type_dm.upper()} DE {n}"
+            st.session_state.correct_answer = n * 2 if type_dm == "Doble" else n // 2
                 
         elif st.session_state.innovamat_type == "Sèries":
-            start = random.randint(1, 10)
-            step = random.randint(2, 5)
+            start = random.randint(1, 50)
+            if st.session_state.diff == "Difícil":
+                step = random.choice([-15, -7, 12, 15, 25])
+            else:
+                step = random.randint(2, 10)
             n1, n2, n3 = start, start + step, start + 2*step
             st.session_state.problem_text = f"{n1}, {n2}, {n3}, ?"
             st.session_state.correct_answer = n3 + step
+            
+        elif st.session_state.innovamat_type == "Piràmide":
+            # Estratègia de suma combinada
+            if st.session_state.diff == "Difícil":
+                n1, n2 = random.randint(20, 100), random.randint(20, 100)
+            else:
+                n1, n2 = random.randint(1, 20), random.randint(1, 20)
+            st.session_state.problem_text = f"{n1} | {n2} -> ?"
+            st.session_state.correct_answer = n1 + n2
 
 # --- RENDER HOME ---
 if st.session_state.current_block == "Home":
@@ -408,6 +454,7 @@ else:
             if st.button("SUMA", use_container_width=True): st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
             if st.button("RESTA", use_container_width=True): st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
             if st.button("MULTIPLICACIÓ", use_container_width=True): st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
+            if st.button("DIVISIÓ", use_container_width=True): st.session_state.mode = "Divisió"; get_new_problem(); safe_rerun()
         
         st.markdown("<p style='font-weight:700;'>📈 NIVELL</p>", unsafe_allow_html=True)
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
@@ -427,7 +474,7 @@ else:
         # Bloc 1: Operacions (si és Mates)
         if st.session_state.current_block == "Mates":
             st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>OPERACIÓ</p>", unsafe_allow_html=True)
-            op_cols = st.columns(3)
+            op_cols = st.columns(4)
             with op_cols[0]:
                 if st.button("SUMA", key="m_suma", use_container_width=True):
                     st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
@@ -437,6 +484,9 @@ else:
             with op_cols[2]:
                 if st.button("MULT", key="m_mult", use_container_width=True):
                     st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
+            with op_cols[3]:
+                if st.button("DIV", key="m_div", use_container_width=True):
+                    st.session_state.mode = "Divisió"; get_new_problem(); safe_rerun()
         
         # Bloc 2: Dificultat
         st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>DIFICULTAT</p>", unsafe_allow_html=True)
@@ -481,8 +531,15 @@ else:
         safe_rerun()
 
     if st.session_state.last_status:
-        msg, color = ("MOLT BÉ! 🎉", "#4CAF50") if st.session_state.last_status == "correct" else ("PROVA DE NOU! 🔄", "#F44336")
+        if st.session_state.last_status == "correct":
+            st.balloons()
+            # GIF de Minions celebrant
+            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJmZzZ4NmlyOGJ4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/11sBLVxNs7v6WA/giphy.gif", use_container_width=True)
+            msg, color = "MOLT BÉ! 🎉", "#4CAF50"
+        else:
+            msg, color = "PROVA DE NOU! 🔄", "#F44336"
+            
         st.markdown(f'<div class="overlay" style="background:{color}; color:white;">{msg}</div>', unsafe_allow_html=True)
         st.session_state.last_status = None
-        time.sleep(1)
+        time.sleep(1.5)
         safe_rerun()
