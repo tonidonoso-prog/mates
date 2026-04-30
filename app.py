@@ -218,10 +218,18 @@ def local_css():
             height: 70px !important;
         }
         .main-card {
-            padding: 1rem !important;
-            border-radius: 20px !important;
+            padding: 1.5rem !important;
+            border-radius: 30px !important;
+            width: 95% !important;
+            max-width: 95vw !important;
+        }
+        div.stButton > button {
+            font-size: 1.2rem !important;
+            height: 60px !important;
+            padding: 0 5px !important;
         }
     }
+
     
     [data-testid="stSidebarUserContent"] {
         padding-top: 0.3rem !important;
@@ -284,6 +292,14 @@ def local_css():
     """, unsafe_allow_html=True)
 
 local_css()
+
+# Helper for compatibility
+def safe_rerun():
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:
+        st.experimental_rerun()
+
 
 # Session State
 if 'current_block' not in st.session_state: st.session_state.current_block = "Home"
@@ -354,62 +370,81 @@ def get_new_problem():
 
 # --- RENDER HOME ---
 if st.session_state.current_block == "Home":
-    st.markdown("<h1 style='text-align:center; font-family:Bungee; font-size:4rem; color:#FF6B6B; margin-bottom:0;'>AVENTURA MATEMÀTICA</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; font-size:1.8rem; margin-bottom:3rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
+    col_img, col_title = st.columns([1, 3])
+    with col_img:
+        if Path("mascot.png").exists():
+            st.image("mascot.png", use_container_width=True)
+    with col_title:
+        st.markdown("<h1 style='text-align:left; font-family:Bungee; font-size:3.5rem; color:#FF6B6B; margin-bottom:0; line-height:1;'>AVENTURA MATEMÀTICA</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:left; font-size:1.5rem; margin-bottom:1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<div class='mode-card card-mates'><h2 style='font-family:Bungee; color:#FF6B6B; font-size:3rem;'>MATES</h2><p style='font-size:1.4rem;'>Sumes, restes i multiplicacions</p></div>", unsafe_allow_html=True)
+        st.markdown("<div class='mode-card card-mates'><h2 style='font-family:Bungee; color:#FF6B6B; font-size:2.5rem;'>MATES</h2><p style='font-size:1.2rem;'>Sumes, restes i multiplicacions</p></div>", unsafe_allow_html=True)
         if st.button("JUGAR MATES", use_container_width=True):
-            st.session_state.current_block = "Mates"; get_new_problem(); st.rerun()
+            st.session_state.current_block = "Mates"; get_new_problem(); safe_rerun()
     with col2:
-        st.markdown("<div class='mode-card card-innovamat'><h2 style='font-family:Bungee; color:#F7D716; font-size:3rem;'>INNOVAMAT</h2><p style='font-size:1.4rem;'>Lògica, descomposició i sèries</p></div>", unsafe_allow_html=True)
+        st.markdown("<div class='mode-card card-innovamat'><h2 style='font-family:Bungee; color:#F7D716; font-size:2.5rem;'>INNOVAMAT</h2><p style='font-size:1.2rem;'>Lògica, descomposició i sèries</p></div>", unsafe_allow_html=True)
         if st.button("JUGAR INNOVAMAT", use_container_width=True):
-            st.session_state.current_block = "Innovamat"; get_new_problem(); st.rerun()
+            st.session_state.current_block = "Innovamat"; get_new_problem(); safe_rerun()
+
 
 # --- RENDER GAME ---
 else:
     with st.sidebar:
         st.markdown("<h1 style='text-align:center; color:#FF6B6B; font-family:Bungee;'>MENU</h1>", unsafe_allow_html=True)
         if st.button("🏠 INICI", use_container_width=True):
-            st.session_state.current_block = "Home"; st.rerun()
+            st.session_state.current_block = "Home"; safe_rerun()
         
         if st.session_state.current_block == "Mates":
             st.markdown("<p style='font-weight:700;'>🧮 OPERACIÓ</p>", unsafe_allow_html=True)
-            if st.button("SUMA", use_container_width=True): st.session_state.mode = "Sumes"; get_new_problem(); st.rerun()
-            if st.button("RESTA", use_container_width=True): st.session_state.mode = "Restes"; get_new_problem(); st.rerun()
-            if st.button("MULTIPLICACIÓ", use_container_width=True): st.session_state.mode = "Multiplicació"; get_new_problem(); st.rerun()
+            if st.button("SUMA", use_container_width=True): st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
+            if st.button("RESTA", use_container_width=True): st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
+            if st.button("MULTIPLICACIÓ", use_container_width=True): st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
         
         st.markdown("<p style='font-weight:700;'>📈 NIVELL</p>", unsafe_allow_html=True)
-        if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); st.rerun()
-        if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); st.rerun()
-        if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
+        if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
+        if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
+        if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
 
     # Controls mòbil (visibles només en mòbil via CSS)
     st.markdown("<div class='mobile-controls-marker'></div>", unsafe_allow_html=True)
     with st.container():
-        mcols = st.columns([1,1,1,1] if st.session_state.current_block == "Mates" else [1,1,1])
-        with mcols[0]:
-            if st.button("🏠", use_container_width=True, key="m_home"):
-                st.session_state.current_block = "Home"; st.rerun()
+        # Fila 1: Home i Modes (si és Mates)
         if st.session_state.current_block == "Mates":
-            with mcols[1]:
-                if st.button(" + ", use_container_width=True, key="m_suma"): st.session_state.mode = "Sumes"; get_new_problem(); st.rerun()
-            with mcols[2]:
-                if st.button(" - ", use_container_width=True, key="m_resta"): st.session_state.mode = "Restes"; get_new_problem(); st.rerun()
-            with mcols[3]:
-                if st.button(" x ", use_container_width=True, key="m_mult"): st.session_state.mode = "Multiplicació"; get_new_problem(); st.rerun()
-            diff_cols = st.columns(3)
+            m_cols = st.columns([1, 1, 1, 1])
+            with m_cols[0]:
+                if st.button("🏠", key="m_home", use_container_width=True):
+                    st.session_state.current_block = "Home"; safe_rerun()
+            with m_cols[1]:
+                if st.button("+", key="m_suma", use_container_width=True):
+                    st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
+            with m_cols[2]:
+                if st.button("-", key="m_resta", use_container_width=True):
+                    st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
+            with m_cols[3]:
+                if st.button("x", key="m_mult", use_container_width=True):
+                    st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
+
         else:
-            diff_cols = mcols[1:]
-            
-        with diff_cols[0] if st.session_state.current_block == "Mates" else diff_cols[0]:
-            if st.button("F", use_container_width=True, key="m_facil"): st.session_state.diff = "Fàcil"; get_new_problem(); st.rerun()
-        with diff_cols[1] if st.session_state.current_block == "Mates" else diff_cols[1]:
-            if st.button("N", use_container_width=True, key="m_normal"): st.session_state.diff = "Normal"; get_new_problem(); st.rerun()
-        if st.session_state.current_block == "Mates":
-            with diff_cols[2]:
-                if st.button("D", use_container_width=True, key="m_dificil"): st.session_state.diff = "Difícil"; get_new_problem(); st.rerun()
+            m_cols = st.columns([1, 1])
+            with m_cols[0]:
+                if st.button("🏠", key="m_home_inn", use_container_width=True):
+                    st.session_state.current_block = "Home"; safe_rerun()
+            with m_cols[1]:
+                st.write("") # Espai buit per mantenir simetria
+        
+        # Fila 2: Dificultat (sempre visible en joc)
+        d_cols = st.columns(3)
+        with d_cols[0]:
+            if st.button("FÀCIL", key="m_facil", use_container_width=True):
+                st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
+        with d_cols[1]:
+            if st.button("NORMAL", key="m_normal", use_container_width=True):
+                st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
+        with d_cols[2]:
+            if st.button("DIFÍCIL", key="m_dificil", use_container_width=True):
+                st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     title = "MATES" if st.session_state.current_block == "Mates" else "INNOVAMAT"
@@ -434,11 +469,11 @@ else:
             get_new_problem()
         else:
             st.session_state.last_status = "incorrect"
-        st.rerun()
+        safe_rerun()
 
     if st.session_state.last_status:
         msg, color = ("MOLT BÉ! 🎉", "#4CAF50") if st.session_state.last_status == "correct" else ("PROVA DE NOU! 🔄", "#F44336")
         st.markdown(f'<div class="overlay" style="background:{color}; color:white;">{msg}</div>', unsafe_allow_html=True)
         st.session_state.last_status = None
         time.sleep(1)
-        st.rerun()
+        safe_rerun()
