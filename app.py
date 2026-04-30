@@ -21,17 +21,17 @@ def local_css():
     html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
     .stApp { background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%); background-attachment: fixed; }
     .main-card { background: rgba(255, 255, 255, 0.9); border-radius: 30px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 800px; margin: auto; }
-    .problem-box { font-family: 'Bungee', cursive !important; font-size: 4rem; min-height: 140px; border-radius: 25px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; }
+    .problem-box { font-family: 'Bungee', cursive !important; font-size: 3.5rem; min-height: 120px; border-radius: 25px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; text-align: center; }
     div.stButton > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; height: 60px !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; }
     
-    /* PC: Amagar els controls que només són per mòbil */
+    /* PC: Amagar controls mòbil */
     @media (min-width: 768px) {
-        .mobile-only { display: none !important; }
+        div:has(> .mobile-only-marker), div:has(> .mobile-only-marker) + div { display: none !important; }
     }
     /* Mobile: Ajustos */
     @media (max-width: 767px) {
         section[data-testid="stSidebar"] { display: none !important; }
-        .problem-box { font-size: 1.8rem !important; min-height: 80px !important; border-width: 5px !important; }
+        .problem-box { font-size: 1.8rem !important; min-height: 80px !important; }
     }
     
     .gif-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; }
@@ -44,11 +44,11 @@ def local_css():
 local_css()
 
 def render_header():
-    c1, c2 = st.columns([0.2, 0.8])
-    with c1:
-        if Path("mascot.png").exists(): st.image("mascot.png", width=50)
-    with c2:
-        st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
+    col1, col2 = st.columns([0.15, 0.85])
+    with col1:
+        if Path("mascot.png").exists(): st.image("mascot.png", width=45)
+    with col2:
+        st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0; line-height:1.2;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
     st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
 def safe_rerun():
@@ -71,7 +71,7 @@ if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
 
 def get_new_problem():
-    low, high = {"Fàcil": (1, 15), "Normal": (10, 100), "Difícil": (50, 500)}.get(st.session_state.diff, (1, 15))
+    low, high = {"Fàcil": (1, 10), "Normal": (10, 50), "Difícil": (50, 200)}.get(st.session_state.diff, (1, 10))
     if st.session_state.current_block == "Mates":
         if st.session_state.mode == "Sumes":
             n1, n2 = random.randint(low, high), random.randint(low, high)
@@ -89,8 +89,7 @@ def get_new_problem():
             n1 = random.randint(1, target - 1)
             st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + ? = {target}", target - n1
         elif t == "Descompon":
-            target = random.randint(20, 999)
-            base = (target // 10) * 10
+            target = random.randint(20, 999); base = (target // 10) * 10
             st.session_state.problem_text, st.session_state.correct_answer = f"{target} = {base} + ?", target - base
         elif t == "Dobles":
             type_dm = "Doble" if st.session_state.diff == "Fàcil" else random.choice(["Doble", "Meitat"])
@@ -108,10 +107,9 @@ def get_new_problem():
         st.session_state.word_start_time = time.time()
 
 # RENDER
-render_header()
-
 if st.session_state.current_block == "Home":
-    st.markdown("<p style='font-size:1.2rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
+    render_header()
+    st.markdown("<p style='font-size:1.1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown("<div class='mode-card card-mates'><h3>🧮 MATES</h3>", unsafe_allow_html=True)
@@ -126,7 +124,7 @@ if st.session_state.current_block == "Home":
         if st.button("JUGAR! 🎮", key="h_l"): st.session_state.current_block = "Lectura"; get_new_problem(); safe_rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 else:
-    # Sidebar
+    render_header()
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
         if st.button("🏠 INICI", use_container_width=True): st.session_state.current_block = "Home"; safe_rerun()
@@ -135,24 +133,23 @@ else:
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
 
-    # Mobile Controls (Només mòbil)
-    st.markdown("<div class='mobile-only'>", unsafe_allow_html=True)
-    m1, m2, m3 = st.columns(3)
-    m1.button("FÀCIL", key="mf", use_container_width=True, on_click=lambda: st.session_state.update(diff="Fàcil"))
-    m2.button("NORMAL", key="mn", use_container_width=True, on_click=lambda: st.session_state.update(diff="Normal"))
-    m3.button("DIFÍCIL", key="md", use_container_width=True, on_click=lambda: st.session_state.update(diff="Difícil"))
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Mobile Controls
+    st.markdown("<div class='mobile-only-marker'></div>", unsafe_allow_html=True)
+    with st.container():
+        m1, m2, m3 = st.columns(3)
+        m1.button("FÀCIL", key="mf", use_container_width=True, on_click=lambda: st.session_state.update(diff="Fàcil"))
+        m2.button("NORMAL", key="mn", use_container_width=True, on_click=lambda: st.session_state.update(diff="Normal"))
+        m3.button("DIFÍCIL", key="md", use_container_width=True, on_click=lambda: st.session_state.update(diff="Difícil"))
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     st.markdown(f"<h3>{st.session_state.current_block.upper()} • {st.session_state.diff.upper()}</h3>", unsafe_allow_html=True)
-    
     if st.session_state.current_block == "Lectura":
         st.markdown(f'''<div class="race-track"><div class="car" style="left:{st.session_state.reading_pos}%; filter:hue-rotate(90deg);">🏎️</div></div>''', unsafe_allow_html=True)
         st.markdown(f'''<div class="race-track" style="background:#444;"><div class="car" style="left:{st.session_state.rival_pos}%;">🏎️</div></div>''', unsafe_allow_html=True)
         st.markdown(f"<div class='problem-box' style='border-color:#4BCffa;'>{st.session_state.reading_word}</div>", unsafe_allow_html=True)
         if st.button("LLEGIT! ✅", use_container_width=True):
             elapsed = time.time() - st.session_state.word_start_time
-            spd = {"Fàcil": 1.5, "Normal": 4.5, "Difícil": 8.0}.get(st.session_state.diff, 3.0)
+            spd = {"Fàcil": 1.5, "Normal": 4.5, "Difícil": 4.5}.get(st.session_state.diff, 3.0)
             st.session_state.reading_pos += 10; st.session_state.rival_pos += elapsed * spd
             if st.session_state.reading_pos >= 90: st.session_state.last_status = "correct"; st.session_state.reading_pos, st.session_state.rival_pos = 0, 0; st.session_state.score += 5
             elif st.session_state.rival_pos >= 90: st.session_state.last_status = "incorrect"; st.session_state.reading_pos, st.session_state.rival_pos = 0, 0
