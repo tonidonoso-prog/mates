@@ -279,6 +279,30 @@ def local_css():
         margin: 0 0 2px 0 !important;
     }
 
+    .gif-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 999999;
+        animation: fadeIn 0.3s ease-out;
+    }
+    .gif-overlay img {
+        max-width: 85%;
+        max-height: 50%;
+        border-radius: 30px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        border: 8px solid #FF6B6B;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
     .overlay {
         position: fixed;
         top: 40%;
@@ -532,14 +556,16 @@ else:
 
     if st.session_state.last_status:
         if st.session_state.last_status == "correct":
-            st.balloons()
-            # GIF de Minions celebrant
-            st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJmZzZ4NmlyOGJ4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/11sBLVxNs7v6WA/giphy.gif", use_container_width=True)
-            msg, color = "MOLT BÉ! 🎉", "#4CAF50"
+            # Popup GIF centrat
+            st.markdown(f'''
+                <div class="gif-overlay">
+                    <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJmZzZ4NmlyOGJ4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4Z3Z4JmVwPXYxX2ludGVybmFsX2dpZl9ieV9pZCZjdD1n/11sBLVxNs7v6WA/giphy.gif">
+                    <h1 style="font-family:'Bungee'; color:#FF6B6B; font-size:4rem; margin-top:20px; text-shadow: 3px 3px 0px white;">MOLT BÉ! 🎉</h1>
+                </div>
+            ''', unsafe_allow_html=True)
         else:
-            msg, color = "PROVA DE NOU! 🔄", "#F44336"
+            st.markdown('<div class="gif-overlay" style="background:rgba(244, 67, 54, 0.9);"><h1 style="font-family:\'Bungee\'; color:white; font-size:4rem;">PROVA DE NOU! 🔄</h1></div>', unsafe_allow_html=True)
             
-        st.markdown(f'<div class="overlay" style="background:{color}; color:white;">{msg}</div>', unsafe_allow_html=True)
         st.session_state.last_status = None
-        time.sleep(1.5)
+        time.sleep(2)
         safe_rerun()
