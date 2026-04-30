@@ -111,7 +111,7 @@ def get_new_problem():
             st.session_state.problem_text, st.session_state.correct_answer = f"{s}, {s+stp}, {s+2*stp}, ?", s+3*stp
         elif t == "Piràmide": 
             n1, n2 = random.randint(1, 10) if st.session_state.diff == "Fàcil" else random.randint(10, 50), random.randint(1, 10) if st.session_state.diff == "Fàcil" else random.randint(10, 50)
-            st.session_state.problem_text, st.session_state.correct_answer = f"{n1} | {n2} -> ?", n1 + n2
+            st.session_state.problem_text, st.session_state.correct_answer = f"{n1} i {n2} fan...?", n1 + n2
 
 if not st.session_state.problem_text: get_new_problem()
 
