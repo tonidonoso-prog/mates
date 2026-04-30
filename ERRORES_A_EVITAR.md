@@ -1,29 +1,26 @@
 # ⚠️ LLISTA DE "CAGADES" A EVITAR (MISTAKES LOG)
 
-Aquest document serveix per recordar els errors comesos durant el desenvolupament de **Aventura Matemàtica** i no tornar-los a repetir.
+Aquest document serveix per recordar els errors comesos i la seva SOLUCIÓ definitiva per no entrar en bucle.
+
+## 🏎️ CARRERA DE COTXES (LECTURA)
+- **❌ Error**: El cotxe vermell (rival) semblava que no avançava. El jugador es confonia de cotxe.
+- **✅ Solució**: S'ha canviat el cotxe del jugador a **VERMELL** (el color per defecte 🏎️) i el rival a blau/verd. S'ha assegurat que el rival tingui un moviment mínim per evitar que sembli congelat.
+- **🔄 Status**: CORREGIT (30 Abr 2026). No tornar a intercanviar els colors. El cotxe principal ha de ser el vermell.
 
 ## 🐍 SINTAXI PYTHON
-- **❌ Cagada**: Posar un `if` a la mateixa línia que una altra sentència usant `;`.
-  - *Exemple dolent*: `n = 10; if x: n = 5`
-  - **✅ Solució**: L' `if` sempre ha d'anar en una línia nova. Python no permet sentències compostes després d'un punt i coma.
+- **❌ Error**: Usar `; if` a la mateixa línia.
+- **✅ Solució**: L' `if` sempre en línia nova.
+- **🔄 Status**: MONITORITZAT. No s'ha repetit en els últims 3 commits.
 
 ## 🚀 STREAMLIT STATE
-- **❌ Cagada**: Oblidar inicialitzar variables a `st.session_state` (com `problem_text` o `correct_answer`).
-  - **✅ Solució**: Totes les variables d'estat han d'estar al bloc inicial d' `if 'var' not in st.session_state`.
-- **❌ Cagada**: Inicialitzar `problem_text = ""` i no generar el primer problema.
-  - **✅ Solució**: Cridar a `get_new_problem()` immediatament després de la inicialització perquè l'usuari no vegi un quadre en blanc al principi.
+- **❌ Error**: `AttributeError` per variables no inicialitzades.
+- **✅ Solució**: Inicialitzar totes les variables a l'inici amb `if 'var' not in st.session_state`.
+- **🔄 Status**: CORREGIT. Afegit `problem_text` i `correct_answer`.
 
 ## 🎨 UI & CSS
-- **❌ Cagada**: Usar selectors CSS massa agressius (com `:has` en contenidors pare) que acaben amagant tota la pàgina al PC.
-  - **✅ Solució**: Usar classes molt específiques com `.mobile-only-section` i amagar-les només en `min-width: 768px`.
-- **❌ Cagada**: Intentar detectar el mòbil des de Python.
-  - **✅ Solució**: Streamlit no ho fa bé. La millor manera és fer-ho via CSS Media Queries (`max-width: 767px`).
-
-## 🎮 LÒGICA DE JOC
-- **❌ Cagada**: Repetir paraules en el nivell de Lectura.
-  - **✅ Solució**: Usar una "bossa" (pool) de paraules barrejades i anar-les treient (`pop`) fins que s'acabin.
-- **❌ Cagada**: Velocitat del rival massa alta en Difícil.
-  - **✅ Solució**: Mantenir una velocitat equilibrada (màxim 4.5) per no frustrar el nen.
+- **❌ Error**: La caixa de resposta sortia "aixafada" o més petita que la de la pregunta.
+- **✅ Solució**: Forçar `height: 140px !important` a totes les capes del contenidor del `number_input`.
+- **🔄 Status**: CORREGIT. Les dues caixes ara són idèntiques.
 
 ---
-*Aquest document s'ha d'actualitzar amb cada error nou per aprendre de la lliçó.*
+*Si veus un error nou, apunta'l aquí i posa la solució abans de seguir.*

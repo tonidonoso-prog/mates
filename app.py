@@ -122,13 +122,18 @@ else:
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     st.markdown(f"<h3>{st.session_state.current_block.upper()} • {st.session_state.diff.upper()}</h3>", unsafe_allow_html=True)
     if st.session_state.current_block == "Lectura":
-        st.markdown(f'''<div class="race-track"><div class="car" style="left:{st.session_state.reading_pos}%; filter:hue-rotate(90deg);">🏎️</div></div>''', unsafe_allow_html=True)
-        st.markdown(f'''<div class="race-track" style="background:#444;"><div class="car" style="left:{st.session_state.rival_pos}%;">🏎️</div></div>''', unsafe_allow_html=True)
+        # Track 1: Player (RED)
+        st.markdown(f'''<div class="race-track"><div class="car" style="left:{st.session_state.reading_pos}%;">🏎️</div></div>''', unsafe_allow_html=True)
+        # Track 2: Rival (BLUE/GREEN)
+        st.markdown(f'''<div class="race-track" style="background:#444;"><div class="car" style="left:{st.session_state.rival_pos}%; filter:hue-rotate(90deg);">🏎️</div></div>''', unsafe_allow_html=True)
         st.markdown(f"<div class='problem-box' style='border-color:#4BCffa;'>{st.session_state.reading_word}</div>", unsafe_allow_html=True)
         if st.button("LLEGIT! ✅", use_container_width=True):
             elapsed = time.time() - st.session_state.word_start_time
+            # Rival speed base + time factor
             spd = {"Fàcil": 1.5, "Normal": 4.5, "Difícil": 4.5}.get(st.session_state.diff, 3.0)
-            st.session_state.reading_pos += 10; st.session_state.rival_pos += elapsed * spd
+            rival_move = 5 + (elapsed * spd) # Min 5 units move
+            st.session_state.reading_pos += 10
+            st.session_state.rival_pos += rival_move
             if st.session_state.reading_pos >= 90: st.session_state.last_status = "correct"; st.session_state.reading_pos, st.session_state.rival_pos = 0, 0; st.session_state.score += 5
             elif st.session_state.rival_pos >= 90: st.session_state.last_status = "incorrect"; st.session_state.reading_pos, st.session_state.rival_pos = 0, 0
             get_new_problem(); safe_rerun()
