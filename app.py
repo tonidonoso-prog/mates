@@ -4,82 +4,38 @@ import time
 from pathlib import Path
 
 # Page Config
-st.set_page_config(
-    page_title="Aventura Matemàtica",
-    page_icon="🧮",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Aventura Matemàtica", page_icon="🧮", layout="wide", initial_sidebar_state="expanded")
 
-CELEBRATION_GIFS = [
-    "https://i.giphy.com/osMIREQbo3s2c.gif",
-    "https://i.giphy.com/BQAk13taTaKYw.gif",
-    "https://i.giphy.com/8Do5PA5jPmTd3x8GI4.gif",
-    "https://i.giphy.com/bCcxY1ADkAqfS.gif",
-    "https://i.giphy.com/kHCc089grRFzSnVHvq.gif",
-    "https://i.giphy.com/hDwYu8UEcUone.gif",
-    "https://i.giphy.com/fCmnDUmpNYqnE2PidN.gif",
-    "https://i.giphy.com/Z8wxB5I34Wl9Rx0ilC.gif",
-    "https://i.giphy.com/bP9S3BMElQ5XAWQIR3.gif",
-    "https://i.giphy.com/N5J5reSW1XkWKoaeij.gif",
-    "https://i.giphy.com/TdfyKrN7HGTIY.gif",
-    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif",
-    "https://i.giphy.com/kagE8uswvjrC2KanKI.gif",
-    "https://i.giphy.com/IXB6mQUgOqWQM.gif",
-    "https://i.giphy.com/XMvrleT9jksXm.gif",
-    "https://i.giphy.com/IzBpqKzHLtfTa.gif",
-    "https://i.giphy.com/hEIuLmpW9DmGA.gif",
-    "https://i.giphy.com/HJQObm4T6xS2Q.gif",
-    "https://i.giphy.com/0WQXGB5aOPLdBRFWyH.gif",
-    "https://i.giphy.com/11sBLVxNs7v6WA.gif"
-]
-
+CELEBRATION_GIFS = ["https://i.giphy.com/osMIREQbo3s2c.gif", "https://i.giphy.com/BQAk13taTaKYw.gif", "https://i.giphy.com/8Do5PA5jPmTd3x8GI4.gif", "https://i.giphy.com/bCcxY1ADkAqfS.gif", "https://i.giphy.com/kHCc089grRFzSnVHvq.gif", "https://i.giphy.com/hDwYu8UEcUone.gif", "https://i.giphy.com/fCmnDUmpNYqnE2PidN.gif", "https://i.giphy.com/Z8wxB5I34Wl9Rx0ilC.gif", "https://i.giphy.com/bP9S3BMElQ5XAWQIR3.gif", "https://i.giphy.com/N5J5reSW1XkWKoaeij.gif", "https://i.giphy.com/TdfyKrN7HGTIY.gif", "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif", "https://i.giphy.com/kagE8uswvjrC2KanKI.gif", "https://i.giphy.com/IXB6mQUgOqWQM.gif", "https://i.giphy.com/XMvrleT9jksXm.gif", "https://i.giphy.com/IzBpqKzHLtfTa.gif", "https://i.giphy.com/hEIuLmpW9DmGA.gif", "https://i.giphy.com/HJQObm4T6xS2Q.gif", "https://i.giphy.com/0WQXGB5aOPLdBRFWyH.gif", "https://i.giphy.com/11sBLVxNs7v6WA.gif"]
 LECTURA_WORDS = {
-    "Fàcil": [
-        "CASA", "GAT", "SOL", "PAPA", "MAMA", "PA", "MÀ", "SOPA", "BOLA", "RODA", "NEN", "NENA", "GOS", "LLIT", "PEIX", "MAR", "CEL", "POC", "MOLT", "BONA", "DALT", "BAIX", "LLUM", "FOC", "DIU", "VEU", "RIU", "PIS", "TREM", "COSA", "LLUNA", "PILA", "TAULA", "CUP", "DIT", "NAS", "ULL", "CAP", "COR", "FER", "DIR", "SER", "TOT", "NOM", "OU", "LLET", "PAU", "MIR", "VOL", "FIL", "MUL", "PEL", "XIC"
-    ],
-    "Normal": [
-        "FINESTRA", "ESTRELLA", "SABATA", "PILOTA", "GIRAFA", "GAT I GOS", "CASA GRAN", "UN PARE", "LA MARE", "SOL I LLUNA", "ELEFANT", "MOTXILLA", "CARAMEL", "FORQUILLA", "CULLERA", "ESCRIPTORI", "BICICLETA", "PANTALONS", "SAMARRETA", "CADIRA BLAVA", "PORTA OBERTA", "FINESTRA TANCADA", "MENJAR SA", "GELAT DOLÇ", "PINZELL NOU", "LLIBRE VELL", "COTXE RÀPID", "BOSC VERD", "MAR BLAVA", "VENT FORT", "PLUJA FREDA", "NEU BLANCA", "ESTIU CALENT", "HIVERN FRED", "TARDOR GROGA", "PRIMAVERA BONA"
-    ],
-    "Difícil": [
-        "ESQUIROL VELOÇ", "ORDINADOR VELL", "LLIBRETA NOVA", "ESTRABÒS DIVERTIT", "FRIGORÍFIC BLANC", "CONEIXEMENT PROFUND", "BOLÍGRAF BLAU", "MATEMÀTIQUES FÀCILS", "ENCICLOPÈDIA GRAN", "TRANSFORMACIÓ MÀGICA", "RECONEIXEMENT RÀPID", "EXCURSIÓ AL MUNTANYA", "VIATGE INTERSTEL·LAR", "PARAULA COMPLICADA", "BIBLIOTECA PÚBLICA", "IMAGINACIÓ INFINITA", "RESPONSABILITAT GRAN", "EXPERIMENT CIENTÍFIC", "INSTRUMENT MUSICAL", "FOTOGRAFIA BONICA", "ARQUITECTURA MODERNA", "ASTRONAUTA VALENT", "PALEONTÒLEG FAMÓS", "INVESTIGACIÓ SECRETA", "ESPECTACLE INCREÏBLE"
-    ]
+    "Fàcil": ["CASA", "GAT", "SOL", "PAPA", "MAMA", "PA", "MÀ", "SOPA", "BOLA", "RODA", "NEN", "NENA", "GOS", "LLIT", "PEIX", "MAR", "CEL", "POC", "MOLT", "BONA", "DALT", "BAIX", "LLUM", "FOC", "DIU", "VEU", "RIU", "PIS", "TREM", "COSA", "LLUNA", "PILA", "TAULA", "CUP", "DIT", "NAS", "ULL", "CAP", "COR", "FER", "DIR", "SER", "TOT", "NOM", "OU", "LLET", "PAU", "MIR", "VOL", "FIL", "MUL", "PEL", "XIC"],
+    "Normal": ["FINESTRA", "ESTRELLA", "SABATA", "PILOTA", "GIRAFA", "GAT I GOS", "CASA GRAN", "UN PARE", "LA MARE", "SOL I LLUNA", "ELEFANT", "MOTXILLA", "CARAMEL", "FORQUILLA", "CULLERA", "ESCRIPTORI", "BICICLETA", "PANTALONS", "SAMARRETA", "CADIRA BLAVA", "PORTA OBERTA", "FINESTRA TANCADA", "MENJAR SA", "GELAT DOLÇ", "PINZELL NOU", "LLIBRE VELL", "COTXE RÀPID", "BOSC VERD", "MAR BLAVA", "VENT FORT", "PLUJA FREDA", "NEU BLANCA", "ESTIU CALENT", "HIVERN FRED", "TARDOR GROGA", "PRIMAVERA BONA"],
+    "Difícil": ["ESQUIROL VELOÇ", "ORDINADOR VELL", "LLIBRETA NOVA", "ESTRABÒS DIVERTIT", "FRIGORÍFIC BLANC", "CONEIXEMENT PROFUND", "BOLÍGRAF BLAU", "MATEMÀTIQUES FÀCILS", "ENCICLOPÈDIA GRAN", "TRANSFORMACIÓ MÀGICA", "RECONEIXEMENT RÀPID", "EXCURSIÓ AL MUNTANYA", "VIATGE INTERSTEL·LAR", "PARAULA COMPLICADA", "BIBLIOTECA PÚBLICA", "IMAGINACIÓ INFINITA", "RESPONSABILITAT GRAN", "EXPERIMENT CIENTÍFIC", "INSTRUMENT MUSICAL", "FOTOGRAFIA BONICA", "ARQUITECTURA MODERNA", "ASTRONAUTA VALENT", "PALEONTÒLEG FAMÓS", "INVESTIGACIÓ SECRETA", "ESPECTACLE INCREÏBLE"]
 }
+CELEBRATION_MESSAGES = ["MOLT BÉ!", "FANTÀSTIC!", "QUIN NIVELL!", "IMPRESSIONANT!", "BRUTAL!", "GENIAL!", "SUPERBÉ!", "HO HAS CLAVAT!", "MOLT BONA FEINA!", "INCREÏBLE!", "CONTINUA AIXÍ!", "IMBATIBLE!", "QUINA PRECISIÓ!", "UN 10!", "HO HAS ACONSEGUIT!", "MÀGIC!", "ESPECTACULAR!", "MOLT BEN PENSAT!", "BRAVO!", "ÈXIT TOTAL!"]
 
-CELEBRATION_MESSAGES = [
-    "MOLT BÉ!", "FANTÀSTIC!", "QUIN NIVELL!", "IMPRESSIONANT!", "BRUTAL!",
-    "GENIAL!", "SUPERBÉ!", "HO HAS CLAVAT!", "MOLT BONA FEINA!", "INCREÏBLE!",
-    "CONTINUA AIXÍ!", "IMBATIBLE!", "QUINA PRECISIÓ!", "UN 10!", "HO HAS ACONSEGUIT!",
-    "MÀGIC!", "ESPECTACULAR!", "MOLT BEN PENSAT!", "BRAVO!", "ÈXIT TOTAL!"
-]
-
-# Custom CSS
 def local_css():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Bungee&display=swap');
     html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
     .stApp { background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%); background-attachment: fixed; }
-    .mode-card { background: white; border-radius: 30px; padding: 1.5rem; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.1); border: 8px solid transparent; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .card-mates { border-color: #FF6B6B; } .card-innovamat { border-color: #F7D716; }
-    .main-card { background: rgba(255, 255, 255, 0.95); border-radius: 35px; padding: 2rem; box-shadow: 0 15px 40px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 800px; margin: auto; }
-    .problem-box { font-family: 'Bungee', cursive !important; font-size: 4rem; min-height: 140px; width: 100%; border-radius: 30px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; }
-    div[data-testid="stNumberInput"] div[data-baseweb="input"] input { height: 100px !important; font-family: 'Bungee', cursive !important; font-size: 3.5rem !important; text-align: center !important; }
-    div.stButton > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.8rem !important; height: 70px !important; border-radius: 15px !important; box-shadow: 0 6px 0px #D63031 !important; border: none !important; }
+    .main-card { background: rgba(255, 255, 255, 0.9); border-radius: 30px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 800px; margin: auto; }
+    .problem-box { font-family: 'Bungee', cursive !important; font-size: 4rem; min-height: 140px; border-radius: 25px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; }
+    div.stButton > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; height: 60px !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; }
     
-    /* Responsive Desktop */
+    /* PC: Amagar els controls que només són per mòbil */
     @media (min-width: 768px) {
-        div[data-testid="stVerticalBlock"]:has(> div .mobile-controls-marker) { display: none !important; }
+        .mobile-only { display: none !important; }
     }
-    /* Responsive Mobile */
+    /* Mobile: Ajustos */
     @media (max-width: 767px) {
         section[data-testid="stSidebar"] { display: none !important; }
-        .problem-box { font-size: 1.8rem !important; min-height: 80px !important; }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] input { font-size: 2.2rem !important; height: 80px !important; }
+        .problem-box { font-size: 1.8rem !important; min-height: 80px !important; border-width: 5px !important; }
     }
     
     .gif-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; }
-    .race-track { background: #333; height: 70px; width: 100%; border-radius: 15px; position: relative; margin: 10px 0; border: 3px dashed white; overflow: hidden; }
+    .race-track { background: #333; height: 60px; width: 100%; border-radius: 15px; position: relative; margin: 10px 0; border: 3px dashed white; overflow: hidden; }
     .car { font-size: 2rem; position: absolute; transition: left 0.5s ease; top: 50%; transform: translateY(-50%); }
     #MainMenu, footer, header {visibility: hidden;}
     </style>
@@ -87,12 +43,11 @@ def local_css():
 
 local_css()
 
-# Helper Header
 def render_header():
-    col1, col2 = st.columns([0.2, 0.8])
-    with col1:
+    c1, c2 = st.columns([0.2, 0.8])
+    with c1:
         if Path("mascot.png").exists(): st.image("mascot.png", width=50)
-    with col2:
+    with c2:
         st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
     st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
@@ -107,7 +62,6 @@ if 'num1' not in st.session_state: st.session_state.num1, st.session_state.num2 
 if 'last_status' not in st.session_state: st.session_state.last_status = None
 if 'mode' not in st.session_state: st.session_state.mode = "Sumes"
 if 'diff' not in st.session_state: st.session_state.diff = "Fàcil"
-if 'innovamat_type' not in st.session_state: st.session_state.innovamat_type = "Amics"
 if 'reading_pos' not in st.session_state: st.session_state.reading_pos = 0
 if 'rival_pos' not in st.session_state: st.session_state.rival_pos = 0
 if 'reading_word' not in st.session_state: st.session_state.reading_word = ""
@@ -117,47 +71,46 @@ if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
 
 def get_new_problem():
-    ranges = {"Fàcil": (1, 10), "Normal": (1, 50), "Difícil": (1, 200)}
-    low, high = ranges.get(st.session_state.diff, (1, 10))
+    low, high = {"Fàcil": (1, 15), "Normal": (10, 100), "Difícil": (50, 500)}.get(st.session_state.diff, (1, 15))
     if st.session_state.current_block == "Mates":
         if st.session_state.mode == "Sumes":
-            n1, n2 = (random.randint(50, 250), random.randint(50, 250)) if st.session_state.diff == "Difícil" else (random.randint(10, 100), random.randint(10, 100)) if st.session_state.diff == "Normal" else (random.randint(1, 15), random.randint(1, 15))
+            n1, n2 = random.randint(low, high), random.randint(low, high)
             st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + {n2}", n1 + n2
         elif st.session_state.mode == "Restes":
-            n1 = random.randint(100, 500) if st.session_state.diff == "Difícil" else random.randint(20, 100) if st.session_state.diff == "Normal" else random.randint(5, 20)
-            n2 = random.randint(1, n1)
+            n1 = random.randint(low + 5, high + 10); n2 = random.randint(1, n1)
             st.session_state.problem_text, st.session_state.correct_answer = f"{n1} - {n2}", n1 - n2
         elif st.session_state.mode == "Multiplicació":
-            n1, n2 = (random.randint(2, 15), random.randint(11, 25)) if st.session_state.diff == "Difícil" else (random.randint(2, 10), random.randint(2, 10)) if st.session_state.diff == "Normal" else (random.randint(1, 5), random.randint(1, 10))
+            n1, n2 = (random.randint(1, 5), random.randint(1, 10)) if st.session_state.diff == "Fàcil" else (random.randint(2, 10), random.randint(2, 10))
             st.session_state.problem_text, st.session_state.correct_answer = f"{n1} x {n2}", n1 * n2
     elif st.session_state.current_block == "Innovamat":
         t = random.choice(["Amics", "Descompon", "Dobles", "Sèries", "Piràmide"])
         if t == "Amics":
-            target = random.choice([10, 20, 100, 1000] if st.session_state.diff == "Difícil" else [10, 20, 100])
+            target = random.choice([10, 20, 100])
             n1 = random.randint(1, target - 1)
             st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + ? = {target}", target - n1
         elif t == "Descompon":
-            target = random.randint(100, 999) if st.session_state.diff == "Difícil" else random.randint(low + 10, high + 10)
-            base = (target // 100) * 100 if st.session_state.diff == "Difícil" else (target // 10) * 10
+            target = random.randint(20, 999)
+            base = (target // 10) * 10
             st.session_state.problem_text, st.session_state.correct_answer = f"{target} = {base} + ?", target - base
         elif t == "Dobles":
             type_dm = "Doble" if st.session_state.diff == "Fàcil" else random.choice(["Doble", "Meitat"])
-            n = random.randint(1, 150)
+            n = random.randint(1, 50)
             if type_dm == "Meitat": n = (n // 2) * 2
             st.session_state.problem_text, st.session_state.correct_answer = f"{type_dm.upper()} DE {n}", n * 2 if type_dm == "Doble" else n // 2
         elif t == "Sèries":
-            start, step = random.randint(1, 50), random.randint(2, 20)
-            st.session_state.problem_text, st.session_state.correct_answer = f"{start}, {start+step}, {start+2*step}, ?", start+3*step
+            s, stp = random.randint(1, 30), random.randint(2, 10)
+            st.session_state.problem_text, st.session_state.correct_answer = f"{s}, {s+stp}, {s+2*stp}, ?", s+3*stp
         elif t == "Piràmide":
-            n1, n2 = random.randint(1, 100), random.randint(1, 100)
+            n1, n2 = random.randint(1, 20), random.randint(1, 20)
             st.session_state.problem_text, st.session_state.correct_answer = f"{n1} | {n2} -> ?", n1 + n2
     elif st.session_state.current_block == "Lectura":
         st.session_state.reading_word = random.choice(LECTURA_WORDS.get(st.session_state.diff, LECTURA_WORDS["Fàcil"]))
         st.session_state.word_start_time = time.time()
 
-# --- MAIN RENDER ---
+# RENDER
+render_header()
+
 if st.session_state.current_block == "Home":
-    render_header()
     st.markdown("<p style='font-size:1.2rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -172,33 +125,24 @@ if st.session_state.current_block == "Home":
         st.markdown("<div class='mode-card' style='border-color:#4BCffa;'><h3>📖 LECTURA</h3>", unsafe_allow_html=True)
         if st.button("JUGAR! 🎮", key="h_l"): st.session_state.current_block = "Lectura"; get_new_problem(); safe_rerun()
         st.markdown("</div>", unsafe_allow_html=True)
-
 else:
-    render_header()
     # Sidebar
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
         if st.button("🏠 INICI", use_container_width=True): st.session_state.current_block = "Home"; safe_rerun()
-        if st.session_state.current_block == "Mates":
-            st.markdown("---")
-            if st.button("SUMA", use_container_width=True): st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
-            if st.button("RESTA", use_container_width=True): st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
-            if st.button("MULT", use_container_width=True): st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
         st.markdown("---")
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
 
-    # Mobile Controls
-    st.markdown("<div class='mobile-controls-marker'></div>", unsafe_allow_html=True)
-    with st.container():
-        st.button("🏠 INICI", key="mob_home", use_container_width=True, on_click=lambda: st.session_state.update(current_block="Home"))
-        m1, m2, m3 = st.columns(3)
-        m1.button("FÀCIL", key="mob_f", use_container_width=True, on_click=lambda: st.session_state.update(diff="Fàcil"))
-        m2.button("NORMAL", key="mob_n", use_container_width=True, on_click=lambda: st.session_state.update(diff="Normal"))
-        m3.button("DIFÍCIL", key="mob_d", use_container_width=True, on_click=lambda: st.session_state.update(diff="Difícil"))
+    # Mobile Controls (Només mòbil)
+    st.markdown("<div class='mobile-only'>", unsafe_allow_html=True)
+    m1, m2, m3 = st.columns(3)
+    m1.button("FÀCIL", key="mf", use_container_width=True, on_click=lambda: st.session_state.update(diff="Fàcil"))
+    m2.button("NORMAL", key="mn", use_container_width=True, on_click=lambda: st.session_state.update(diff="Normal"))
+    m3.button("DIFÍCIL", key="md", use_container_width=True, on_click=lambda: st.session_state.update(diff="Difícil"))
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    # Game Card
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     st.markdown(f"<h3>{st.session_state.current_block.upper()} • {st.session_state.diff.upper()}</h3>", unsafe_allow_html=True)
     
@@ -221,7 +165,6 @@ else:
             if u_in == st.session_state.correct_answer: st.session_state.score += 1; st.session_state.last_status = "correct"; get_new_problem()
             else: st.session_state.last_status = "incorrect"
             safe_rerun()
-    
     st.markdown(f"#### ⭐ PUNTS: {st.session_state.score}", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
