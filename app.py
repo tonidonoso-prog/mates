@@ -22,6 +22,8 @@ def local_css():
     .stApp { background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%); background-attachment: fixed; }
     .main-card { background: rgba(255, 255, 255, 0.9); border-radius: 30px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 800px; margin: auto; }
     .problem-box { font-family: 'Bungee', cursive !important; font-size: 3.5rem; min-height: 120px; border-radius: 25px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; text-align: center; }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] { background: white !important; border-radius: 25px !important; border: 8px solid #FF6B6B !important; }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] input { height: 120px !important; font-family: 'Bungee', cursive !important; font-size: 3.5rem !important; text-align: center !important; }
     div.stButton > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; height: 60px !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; }
     @media (min-width: 768px) { .mobile-only-section { display: none !important; } }
     @media (max-width: 767px) { section[data-testid="stSidebar"] { display: none !important; } .problem-box { font-size: 1.8rem !important; min-height: 80px !important; } }
