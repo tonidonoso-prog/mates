@@ -406,35 +406,28 @@ else:
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
-
-    # Controls mòbil (visibles només en mòbil via CSS)
     st.markdown("<div class='mobile-controls-marker'></div>", unsafe_allow_html=True)
     with st.container():
-        # Fila 1: Home i Modes (si és Mates)
+        # Botó Inici
+        if st.button("🏠 INICI", key="m_home_full", use_container_width=True):
+            st.session_state.current_block = "Home"; safe_rerun()
+            
+        # Bloc 1: Operacions (si és Mates)
         if st.session_state.current_block == "Mates":
-            m_cols = st.columns([1, 1, 1, 1])
-            with m_cols[0]:
-                if st.button("🏠", key="m_home", use_container_width=True):
-                    st.session_state.current_block = "Home"; safe_rerun()
-            with m_cols[1]:
-                if st.button("+", key="m_suma", use_container_width=True):
+            st.markdown("<p style='text-align:center; font-weight:700; margin:0; font-size:0.8rem;'>OPERACIÓ</p>", unsafe_allow_html=True)
+            op_cols = st.columns(3)
+            with op_cols[0]:
+                if st.button("SUMA", key="m_suma", use_container_width=True):
                     st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
-            with m_cols[2]:
-                if st.button("-", key="m_resta", use_container_width=True):
+            with op_cols[1]:
+                if st.button("RESTA", key="m_resta", use_container_width=True):
                     st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
-            with m_cols[3]:
-                if st.button("x", key="m_mult", use_container_width=True):
+            with op_cols[2]:
+                if st.button("MULT", key="m_mult", use_container_width=True):
                     st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
-
-        else:
-            m_cols = st.columns([1, 1])
-            with m_cols[0]:
-                if st.button("🏠", key="m_home_inn", use_container_width=True):
-                    st.session_state.current_block = "Home"; safe_rerun()
-            with m_cols[1]:
-                st.write("") # Espai buit per mantenir simetria
         
-        # Fila 2: Dificultat (sempre visible en joc)
+        # Bloc 2: Dificultat
+        st.markdown("<p style='text-align:center; font-weight:700; margin:0; font-size:0.8rem;'>DIFICULTAT</p>", unsafe_allow_html=True)
         d_cols = st.columns(3)
         with d_cols[0]:
             if st.button("FÀCIL", key="m_facil", use_container_width=True):
@@ -445,6 +438,7 @@ else:
         with d_cols[2]:
             if st.button("DIFÍCIL", key="m_dificil", use_container_width=True):
                 st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
+
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     title = "MATES" if st.session_state.current_block == "Mates" else "INNOVAMAT"
