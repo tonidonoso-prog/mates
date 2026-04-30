@@ -27,7 +27,12 @@ def local_css():
     div[data-testid="stNumberInput"] { height: 140px !important; }
     div[data-testid="stNumberInput"] > div { height: 140px !important; }
     div[data-testid="stNumberInput"] div[data-baseweb="input"] { background: white !important; border-radius: 25px !important; border: 8px solid #FF6B6B !important; height: 140px !important; }
-    div[data-testid="stNumberInput"] div[data-baseweb="input"] input { height: 140px !important; font-family: 'Bungee', cursive !important; font-size: 3.5rem !important; text-align: center !important; }
+    div[data-testid="stNumberInput"] div[data-baseweb="input"] input { height: 140px !important; font-family: 'Bungee', cursive !important; font-size: 3.5rem !important; text-align: center !important; border: none !important; outline: none !important; }
+    /* Hide Step Buttons */
+    button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] { display: none !important; }
+    /* Hide Spinners */
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
     div.stButton > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; height: 60px !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; }
     @media (min-width: 768px) { .mobile-only-section { display: none !important; } }
     @media (max-width: 767px) { section[data-testid="stSidebar"] { display: none !important; } .problem-box { font-size: 1.8rem !important; min-height: 80px !important; } }
