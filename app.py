@@ -23,17 +23,8 @@ def local_css():
     .main-card { background: rgba(255, 255, 255, 0.9); border-radius: 30px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; width: 100%; max-width: 800px; margin: auto; }
     .problem-box { font-family: 'Bungee', cursive !important; font-size: 3.5rem; min-height: 120px; border-radius: 25px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; text-align: center; }
     div.stButton > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; height: 60px !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; }
-    
-    /* PC: Amagar controls mòbil */
-    @media (min-width: 768px) {
-        .mobile-only-section { display: none !important; }
-    }
-    /* Mobile: Ajustos */
-    @media (max-width: 767px) {
-        section[data-testid="stSidebar"] { display: none !important; }
-        .problem-box { font-size: 1.8rem !important; min-height: 80px !important; }
-    }
-    
+    @media (min-width: 768px) { .mobile-only-section { display: none !important; } }
+    @media (max-width: 767px) { section[data-testid="stSidebar"] { display: none !important; } .problem-box { font-size: 1.8rem !important; min-height: 80px !important; } }
     .race-track { background: #333; height: 60px; width: 100%; border-radius: 15px; position: relative; margin: 10px 0; border: 3px dashed white; overflow: hidden; }
     .car { font-size: 2rem; position: absolute; transition: left 0.5s ease; top: 50%; transform: translateY(-50%); }
     .gif-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; }
@@ -47,101 +38,83 @@ def render_header():
     c1, c2 = st.columns([0.15, 0.85])
     with c1:
         if Path("mascot.png").exists(): st.image("mascot.png", width=45)
-    with c2:
-        st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0; line-height:1.2;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
+    with c2: st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
     st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
 def safe_rerun():
     if hasattr(st, "rerun"): st.rerun()
     else: st.experimental_rerun()
 
-# State
+# State initialization
 if 'current_block' not in st.session_state: st.session_state.current_block = "Home"
 if 'score' not in st.session_state: st.session_state.score = 0
 if 'diff' not in st.session_state: st.session_state.diff = "Fàcil"
+if 'mode' not in st.session_state: st.session_state.mode = "Sumes"
 if 'reading_pos' not in st.session_state: st.session_state.reading_pos = 0
 if 'rival_pos' not in st.session_state: st.session_state.rival_pos = 0
 if 'reading_word' not in st.session_state: st.session_state.reading_word = ""
 if 'word_start_time' not in st.session_state: st.session_state.word_start_time = time.time()
 if 'words_pool' not in st.session_state: st.session_state.words_pool = []
-if 'problem_text' not in st.session_state: st.session_state.problem_text = ""
-if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
 if 'last_status' not in st.session_state: st.session_state.last_status = None
 
 def get_new_problem():
+    low, high = {"Fàcil": (1, 10), "Normal": (10, 50), "Difícil": (50, 200)}.get(st.session_state.diff, (1, 10))
     if st.session_state.current_block == "Lectura":
         if not st.session_state.words_pool:
-            pool = LECTURA_WORDS.get(st.session_state.diff, LECTURA_WORDS["Fàcil"]).copy()
-            random.shuffle(pool)
-            st.session_state.words_pool = pool
+            p = LECTURA_WORDS.get(st.session_state.diff, LECTURA_WORDS["Fàcil"]).copy()
+            random.shuffle(p); st.session_state.words_pool = p
         st.session_state.reading_word = st.session_state.words_pool.pop()
         st.session_state.word_start_time = time.time()
-    else:
-        low, high = {"Fàcil": (1, 10), "Normal": (10, 50), "Difícil": (50, 200)}.get(st.session_state.diff, (1, 10))
-        if st.session_state.current_block == "Mates":
-            mode = getattr(st.session_state, 'mode', 'Sumes')
-            if mode == "Sumes":
-                n1, n2 = random.randint(low, high), random.randint(low, high)
-                st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + {n2}", n1 + n2
-            elif mode == "Restes":
-                n1 = random.randint(low + 5, high + 10); n2 = random.randint(1, n1)
-                st.session_state.problem_text, st.session_state.correct_answer = f"{n1} - {n2}", n1 - n2
-            elif mode == "Multiplicació":
-                n1, n2 = (random.randint(1, 5), random.randint(1, 10)) if st.session_state.diff == "Fàcil" else (random.randint(2, 10), random.randint(2, 10))
-                st.session_state.problem_text, st.session_state.correct_answer = f"{n1} x {n2}", n1 * n2
-        elif st.session_state.current_block == "Innovamat":
-            t = random.choice(["Amics", "Descompon", "Dobles", "Sèries", "Piràmide"])
-            if t == "Amics":
-                target = random.choice([10, 20, 100]); n1 = random.randint(1, target - 1)
-                st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + ? = {target}", target - n1
-            elif t == "Descompon":
-                target = random.randint(20, 999); base = (target // 10) * 10
-                st.session_state.problem_text, st.session_state.correct_answer = f"{target} = {base} + ?", target - base
-            elif t == "Dobles":
-                type_dm = "Doble" if st.session_state.diff == "Fàcil" else random.choice(["Doble", "Meitat"])
-                n = random.randint(1, 50)
-                if type_dm == "Meitat":
-                    n = (n // 2) * 2
-                st.session_state.problem_text, st.session_state.correct_answer = f"{type_dm.upper()} DE {n}", n * 2 if type_dm == "Doble" else n // 2
-            elif t == "Sèries":
-                s, stp = random.randint(1, 30), random.randint(2, 10)
-                st.session_state.problem_text, st.session_state.correct_answer = f"{s}, {s+stp}, {s+2*stp}, ?", s+3*stp
-            elif t == "Piràmide":
-                n1, n2 = random.randint(1, 20), random.randint(1, 20)
-                st.session_state.problem_text, st.session_state.correct_answer = f"{n1} | {n2} -> ?", n1 + n2
+    elif st.session_state.current_block == "Mates":
+        m = st.session_state.mode
+        if m == "Sumes": n1, n2 = random.randint(low, high), random.randint(low, high); st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + {n2}", n1 + n2
+        elif m == "Restes": n1 = random.randint(low + 5, high + 10); n2 = random.randint(1, n1); st.session_state.problem_text, st.session_state.correct_answer = f"{n1} - {n2}", n1 - n2
+        elif m == "Multiplicació": n1, n2 = (random.randint(1, 5), random.randint(1, 10)) if st.session_state.diff == "Fàcil" else (random.randint(2, 10), random.randint(2, 10)); st.session_state.problem_text, st.session_state.correct_answer = f"{n1} x {n2}", n1 * n2
+    elif st.session_state.current_block == "Innovamat":
+        t = random.choice(["Amics", "Descompon", "Dobles", "Sèries", "Piràmide"])
+        if t == "Amics": target = random.choice([10, 20, 100]); n1 = random.randint(1, target - 1); st.session_state.problem_text, st.session_state.correct_answer = f"{n1} + ? = {target}", target - n1
+        elif t == "Descompon": target = random.randint(20, 999); base = (target // 10) * 10; st.session_state.problem_text, st.session_state.correct_answer = f"{target} = {base} + ?", target - base
+        elif t == "Dobles":
+            dm = "Doble" if st.session_state.diff == "Fàcil" else random.choice(["Doble", "Meitat"])
+            n = random.randint(1, 50); if dm == "Meitat": n = (n // 2) * 2
+            st.session_state.problem_text, st.session_state.correct_answer = f"{dm.upper()} DE {n}", n * 2 if dm == "Doble" else n // 2
+        elif t == "Sèries": s, stp = random.randint(1, 30), random.randint(2, 10); st.session_state.problem_text, st.session_state.correct_answer = f"{s}, {s+stp}, {s+2*stp}, ?", s+3*stp
+        elif t == "Piràmide": n1, n2 = random.randint(1, 20), random.randint(1, 20); st.session_state.problem_text, st.session_state.correct_answer = f"{n1} | {n2} -> ?", n1 + n2
+
+if 'problem_text' not in st.session_state: get_new_problem()
 
 # RENDER
 render_header()
-
 if st.session_state.current_block == "Home":
     st.markdown("<p style='font-size:1.1rem;'>Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
-    c1.button("🧮 MATES", on_click=lambda: st.session_state.update(current_block="Mates", mode="Sumes"), use_container_width=True)
+    c1.button("🧮 MATES", on_click=lambda: st.session_state.update(current_block="Mates"), use_container_width=True)
     c2.button("💡 INNOVAMAT", on_click=lambda: st.session_state.update(current_block="Innovamat"), use_container_width=True)
-    c3.button("📖 LECTURA", on_click=lambda: st.session_state.update(current_block="Lectura", words_pool=[]), use_container_width=True)
-    if 'problem_text' not in st.session_state: get_new_problem()
-
+    c3.button("📖 LECTURA", on_click=lambda: st.session_state.update(current_block="Lectura"), use_container_width=True)
 else:
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
         if st.button("🏠 INICI", use_container_width=True): st.session_state.current_block = "Home"; safe_rerun()
         st.markdown("---")
-        if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; st.session_state.words_pool = []; get_new_problem(); safe_rerun()
-        if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; st.session_state.words_pool = []; get_new_problem(); safe_rerun()
-        if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; st.session_state.words_pool = []; get_new_problem(); safe_rerun()
+        if st.session_state.current_block == "Mates":
+            if st.button("SUMA", use_container_width=True): st.session_state.mode = "Sumes"; get_new_problem(); safe_rerun()
+            if st.button("RESTA", use_container_width=True): st.session_state.mode = "Restes"; get_new_problem(); safe_rerun()
+            if st.button("MULT", use_container_width=True): st.session_state.mode = "Multiplicació"; get_new_problem(); safe_rerun()
+            st.markdown("---")
+        if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
+        if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
+        if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
 
-    # Secció de mòbil (Només mòbil)
     st.markdown("<div class='mobile-only-section'>", unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
-    m1.button("FÀCIL", key="mf", use_container_width=True, on_click=lambda: st.session_state.update(diff="Fàcil", words_pool=[]))
-    m2.button("NORMAL", key="mn", use_container_width=True, on_click=lambda: st.session_state.update(diff="Normal", words_pool=[]))
-    m3.button("DIFÍCIL", key="md", use_container_width=True, on_click=lambda: st.session_state.update(diff="Difícil", words_pool=[]))
+    m1.button("FÀCIL", key="mf", use_container_width=True, on_click=lambda: st.session_state.update(diff="Fàcil"))
+    m2.button("NORMAL", key="mn", use_container_width=True, on_click=lambda: st.session_state.update(diff="Normal"))
+    m3.button("DIFÍCIL", key="md", use_container_width=True, on_click=lambda: st.session_state.update(diff="Difícil"))
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
     st.markdown(f"<h3>{st.session_state.current_block.upper()} • {st.session_state.diff.upper()}</h3>", unsafe_allow_html=True)
-    
     if st.session_state.current_block == "Lectura":
         st.markdown(f'''<div class="race-track"><div class="car" style="left:{st.session_state.reading_pos}%; filter:hue-rotate(90deg);">🏎️</div></div>''', unsafe_allow_html=True)
         st.markdown(f'''<div class="race-track" style="background:#444;"><div class="car" style="left:{st.session_state.rival_pos}%;">🏎️</div></div>''', unsafe_allow_html=True)
