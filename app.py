@@ -64,6 +64,8 @@ if 'rival_pos' not in st.session_state: st.session_state.rival_pos = 0
 if 'reading_word' not in st.session_state: st.session_state.reading_word = ""
 if 'word_start_time' not in st.session_state: st.session_state.word_start_time = time.time()
 if 'words_pool' not in st.session_state: st.session_state.words_pool = []
+if 'problem_text' not in st.session_state: st.session_state.problem_text = ""
+if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
 if 'input_key' not in st.session_state: st.session_state.input_key = 0
 if 'last_status' not in st.session_state: st.session_state.last_status = None
 
