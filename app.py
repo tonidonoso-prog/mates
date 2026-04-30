@@ -172,8 +172,12 @@ def local_css():
     }
 
     @media (min-width: 768px) {
-        .mobile-only { display: none !important; }
+        div[data-testid="stVerticalBlock"]:has(#mobile-trigger) {
+            display: none !important;
+        }
     }
+
+
 
 
     /* MOBILE: amaga sidebar, mostra controls inline */
@@ -405,9 +409,10 @@ else:
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
     # Controls mòbil (visibles només en mòbil via CSS)
-    st.markdown("<div class='mobile-only'>", unsafe_allow_html=True)
     with st.container():
+        st.markdown("<span id='mobile-trigger'></span>", unsafe_allow_html=True)
         # Botó Inici
+
         if st.button("🏠 INICI", key="m_home_full", use_container_width=True):
             st.session_state.current_block = "Home"; safe_rerun()
             
@@ -437,7 +442,8 @@ else:
         with d_cols[2]:
             if st.button("DIFÍCIL", key="m_dificil", use_container_width=True):
                 st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+
+
 
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
