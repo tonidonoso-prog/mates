@@ -12,26 +12,26 @@ st.set_page_config(
 )
 
 CELEBRATION_GIFS = [
-    "https://i.giphy.com/M9ZJ8E0Y4k1vG.gif", # Minions
-    "https://i.giphy.com/f68vS1NidvUu4.gif", # Minions
-    "https://i.giphy.com/jK8pM1Uu0C9S8.gif", # Minions
-    "https://i.giphy.com/3og0IPxMM0erATuepW.gif", # Minions
-    "https://i.giphy.com/11sBLVxNs7v6WA.gif", # Minions
-    "https://i.giphy.com/26gs6Nf8l8lZ6mN6E.gif", # Mickey
-    "https://i.giphy.com/l2SpY6f8T7rN9Lw4k.gif", # Olaf
-    "https://i.giphy.com/hnO8IeGMDcJ7TViI0j.gif", # Stitch
-    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif", # Stitch
-    "https://i.giphy.com/aQYR1p8saOQla.gif", # Stitch
-    "https://i.giphy.com/10YqP0o74U9XwY.gif", # Chase
-    "https://i.giphy.com/26u4lOMA8JKSXvLKE.gif", # Paw Patrol
-    "https://i.giphy.com/BS7Y53mkeqngi9Jpvl.gif", # Marshall
-    "https://i.giphy.com/3o7abKhOpuMcmLjdcI.gif", # SpongeBob
-    "https://i.giphy.com/n9886h6HdfiTe.gif", # Patrick
-    "https://i.giphy.com/l4KhQo2MESJkc6LUs.gif", # SpongeBob
-    "https://i.giphy.com/3o7TKDkDbIDJieKbVm.gif", # Mike
-    "https://i.giphy.com/11hVniWsyRKISY.gif", # Buzz
-    "https://i.giphy.com/11fSZZ8csP8G3e.gif", # Nemo
-    "https://i.giphy.com/S98fuEoS5zIFG.gif"  # Shrek
+    "https://i.giphy.com/osMIREQbo3s2c.gif",
+    "https://i.giphy.com/BQAk13taTaKYw.gif",
+    "https://i.giphy.com/8Do5PA5jPmTd3x8GI4.gif",
+    "https://i.giphy.com/bCcxY1ADkAqfS.gif",
+    "https://i.giphy.com/kHCc089grRFzSnVHvq.gif",
+    "https://i.giphy.com/hDwYu8UEcUone.gif",
+    "https://i.giphy.com/fCmnDUmpNYqnE2PidN.gif",
+    "https://i.giphy.com/Z8wxB5I34Wl9Rx0ilC.gif",
+    "https://i.giphy.com/bP9S3BMElQ5XAWQIR3.gif",
+    "https://i.giphy.com/N5J5reSW1XkWKoaeij.gif",
+    "https://i.giphy.com/TdfyKrN7HGTIY.gif",
+    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif",
+    "https://i.giphy.com/kagE8uswvjrC2KanKI.gif",
+    "https://i.giphy.com/IXB6mQUgOqWQM.gif",
+    "https://i.giphy.com/XMvrleT9jksXm.gif",
+    "https://i.giphy.com/IzBpqKzHLtfTa.gif",
+    "https://i.giphy.com/hEIuLmpW9DmGA.gif",
+    "https://i.giphy.com/HJQObm4T6xS2Q.gif",
+    "https://i.giphy.com/0WQXGB5aOPLdBRFWyH.gif",
+    "https://i.giphy.com/11sBLVxNs7v6WA.gif"
 ]
 
 CELEBRATION_MESSAGES = [
@@ -370,7 +370,7 @@ if 'score' not in st.session_state: st.session_state.score = 0
 if 'num1' not in st.session_state: st.session_state.num1, st.session_state.num2 = 0, 0
 if 'last_status' not in st.session_state: st.session_state.last_status = None
 if 'mode' not in st.session_state: st.session_state.mode = "Sumes"
-if 'diff' not in st.session_state: st.session_state.diff = "Normal"
+if 'diff' not in st.session_state: st.session_state.diff = "Fàcil"
 if 'innovamat_type' not in st.session_state: st.session_state.innovamat_type = "Amics"
 if 'problem_text' not in st.session_state: st.session_state.problem_text = ""
 if 'correct_answer' not in st.session_state: st.session_state.correct_answer = 0
