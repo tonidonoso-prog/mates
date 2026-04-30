@@ -172,11 +172,9 @@ def local_css():
     }
 
     @media (min-width: 768px) {
-        div:has(.mobile-controls-marker), 
-        div:has(.mobile-controls-marker) + div { 
-            display: none !important; 
-        }
+        .mobile-only { display: none !important; }
     }
+
 
     /* MOBILE: amaga sidebar, mostra controls inline */
     @media (max-width: 767px) {
@@ -406,7 +404,8 @@ else:
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
-    st.markdown("<div class='mobile-controls-marker'></div>", unsafe_allow_html=True)
+    # Controls mòbil (visibles només en mòbil via CSS)
+    st.markdown("<div class='mobile-only'>", unsafe_allow_html=True)
     with st.container():
         # Botó Inici
         if st.button("🏠 INICI", key="m_home_full", use_container_width=True):
@@ -438,6 +437,7 @@ else:
         with d_cols[2]:
             if st.button("DIFÍCIL", key="m_dificil", use_container_width=True):
                 st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
     st.markdown("<div class='main-card'>", unsafe_allow_html=True)
