@@ -204,9 +204,11 @@ def local_css():
             display: none !important;
             visibility: hidden !important;
         }
-        .main-card { width: 95% !important; padding: 1.5rem !important; }
-        .problem-box { font-size: 3rem !important; height: 120px !important; }
-        div.stButton > button { font-size: 1.6rem !important; height: 70px !important; }
+        .main-card { width: 98% !important; padding: 1rem !important; margin-top: 0 !important;}
+        .problem-box { font-size: 2.5rem !important; height: 100px !important; }
+        div.stButton > button { font-size: 1.4rem !important; height: 60px !important; }
+        .race-track { height: 70px !important; }
+        .car { font-size: 1.8rem !important; }
     }
 
     .gif-overlay {
@@ -461,6 +463,24 @@ elif st.session_state.current_block == "Lectura":
         if st.button("FÀCIL", use_container_width=True): st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
         if st.button("NORMAL", use_container_width=True): st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
         if st.button("DIFÍCIL", use_container_width=True): st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
+
+    # Controls mòbil per a Lectura
+    st.markdown("<div class='mobile-marker'></div>", unsafe_allow_html=True)
+    with st.container():
+        if st.button("🏠 INICI", key="m_home_lectura", use_container_width=True):
+            st.session_state.current_block = "Home"; safe_rerun()
+        
+        st.markdown("<p style='text-align:center; font-weight:700; margin-top:5px; margin-bottom:2px; font-size:0.8rem;'>DIFICULTAT</p>", unsafe_allow_html=True)
+        ld_cols = st.columns(3)
+        with ld_cols[0]:
+            if st.button("FÀCIL", key="ml_facil", use_container_width=True):
+                st.session_state.diff = "Fàcil"; get_new_problem(); safe_rerun()
+        with ld_cols[1]:
+            if st.button("NORMAL", key="ml_normal", use_container_width=True):
+                st.session_state.diff = "Normal"; get_new_problem(); safe_rerun()
+        with ld_cols[2]:
+            if st.button("DIFÍCIL", key="ml_dificil", use_container_width=True):
+                st.session_state.diff = "Difícil"; get_new_problem(); safe_rerun()
 
     st.markdown("<div class='main-card' style='border-color:#4BCffa;'>", unsafe_allow_html=True)
     st.markdown(f"<h2 style='color:#4BCffa; font-family:Bungee;'>CURSA DE PARAULES • {st.session_state.diff.upper()}</h2>", unsafe_allow_html=True)
