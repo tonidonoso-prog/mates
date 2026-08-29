@@ -93,6 +93,12 @@ def db_top(n=20):
                               " LIMIT :n"), {"n": n}).fetchall()
 
 
+def normalitza_nom(nom):
+    """Els nens escriuran 'jan donoso', 'JAN DONOSO' i 'Jan  Donoso'. Sense
+    normalitzar serien tres files diferents al rànquing i es repartirien els punts."""
+    return " ".join(w.capitalize() for w in nom.split())
+
+
 def nom_public(nom):
     if MOSTRA_NOMS_SENCERS:
         return nom
@@ -538,7 +544,7 @@ def on_nom_change():
     nomes es dibuixa a la Home: si el guardavem a la clau del widget, es perdia
     en entrar a un bloc i no es desava res. Per aixo el copiem a 'nom', que es
     una clau normal i sobreviu."""
-    st.session_state.nom = st.session_state.nom_input.strip()
+    st.session_state.nom = normalitza_nom(st.session_state.nom_input)
     carrega_base()
 
 
@@ -644,7 +650,7 @@ if st.session_state.current_block == "Home":
         st.session_state.nom_input = st.session_state.nom
     st.text_input("Nom i cognom (per sortir a la classificació)", key="nom_input", max_chars=40,
                   placeholder="Ex: Jan Donoso", on_change=on_nom_change)
-    st.session_state.nom = st.session_state.nom_input.strip()
+    st.session_state.nom = normalitza_nom(st.session_state.nom_input)
     carrega_base()
     if st.session_state.nom.strip() and st.session_state.base:
         b = st.session_state.base
