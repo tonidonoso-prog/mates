@@ -19,8 +19,11 @@ INNO_KINDS = [("TOTS", "Tots"), ("AMICS", "Amics"), ("DESCOMPON", "Descompon"),
 INNO_ALL = [k for _, k in INNO_KINDS if k != "Tots"]
 
 
-def slug(txt):
-    """Clau CSS segura a partir d'un nom amb accents."""
+def slugify(txt):
+    """Clau CSS segura a partir d'un nom amb accents.
+
+    Es diu slugify i no slug perque els bucles de DIFFS i OPS fan servir una
+    variable 'slug', i abans tapaven la funcio -> TypeError a Innovamat."""
     return "".join(c if c.isalnum() else "_" for c in
                    txt.lower().replace("è", "e").replace("é", "e").replace("à", "a")
                       .replace("í", "i").replace("ó", "o").replace("ú", "u"))
@@ -740,7 +743,7 @@ else:
         op_slug = {m: s for _, m, s in OPS}[ss.mode]
         active += [f"ctl_op_{op_slug}", f"sb_op_{op_slug}"]
     if ss.current_block == "Innovamat":
-        active.append("sb_kind_" + slug(ss.inno_kind))
+        active.append("sb_kind_" + slugify(ss.inno_kind))
     st.markdown("<style>" + "".join(
         f".st-key-{k} button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
         f" box-shadow: 0 5px 0px #0B7A45 !important; }}" for k in active) + "</style>", unsafe_allow_html=True)
@@ -774,7 +777,7 @@ else:
             st.markdown("---")
         if ss.current_block == "Innovamat":
             for label, kind in INNO_KINDS:
-                key = "sb_kind_" + slug(kind)
+                key = "sb_kind_" + slugify(kind)
                 if st.button(label, key=key, use_container_width=True):
                     set_inno_kind(kind); safe_rerun()
             st.markdown("---")
