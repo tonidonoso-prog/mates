@@ -2,6 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import random
 import time
+import json
 import datetime
 from pathlib import Path
 from sqlalchemy import create_engine, text
@@ -9,7 +10,26 @@ from sqlalchemy import create_engine, text
 st.set_page_config(page_title="Aventura Matemàtica", page_icon="🧮", layout="wide", initial_sidebar_state="expanded")
 
 BLOCKS = [("🧮", "MATES", "Mates"), ("💡", "INNOVAMAT", "Innovamat"),
-          ("📖", "LECTURA", "Lectura"), ("🏆", "REPTE", "Repte")]
+          ("📖", "LECTURA", "Lectura"), ("✏️", "LLETRES I NÚMEROS", "Lletres"),
+          ("🏆", "REPTE", "Repte")]
+
+# ---- Caligrafia: l'abecedari catala amb una paraula d'exemple per a cada lletra ----
+ABECEDARI = [
+    ("A", "AVIÓ", "✈️"), ("B", "BALENA", "🐋"), ("C", "CASA", "🏠"), ("D", "DAU", "🎲"),
+    ("E", "ELEFANT", "🐘"), ("F", "FLOR", "🌸"), ("G", "GAT", "🐱"), ("H", "HOTEL", "🏨"),
+    ("I", "ILLA", "🏝️"), ("J", "JOGUINA", "🧸"), ("K", "KIWI", "🥝"), ("L", "LUPA", "🔍"),
+    ("M", "MÀ", "✋"), ("N", "NAS", "👃"), ("O", "OS", "🐻"), ("P", "PILOTA", "⚽"),
+    ("Q", "QUADRE", "🖼️"), ("R", "RODA", "🛞"), ("S", "SOL", "☀️"), ("T", "TAULA", "🪑"),
+    ("U", "UNGLA", "💅"), ("V", "VACA", "🐮"), ("W", "WIFI", "📶"), ("X", "XOCOLATA", "🍫"),
+    ("Y", "IOGURT", "🥛"), ("Z", "ZEBRA", "🦓"), ("Ç", "TAÇA", "☕"),
+    ("LL", "LLUNA", "🌙"), ("NY", "MUNTANYA", "⛰️"),
+]
+NUMEROS = [
+    ("0", "ZERO", ""), ("1", "U", "🍎"), ("2", "DOS", "🍎🍎"), ("3", "TRES", "🍎🍎🍎"),
+    ("4", "QUATRE", "🍎🍎🍎🍎"), ("5", "CINC", "🍎🍎🍎🍎🍎"), ("6", "SIS", "🍎🍎🍎🍎🍎🍎"),
+    ("7", "SET", "🍎🍎🍎🍎🍎🍎🍎"), ("8", "VUIT", "🍎🍎🍎🍎🍎🍎🍎🍎"),
+    ("9", "NOU", "🍎🍎🍎🍎🍎🍎🍎🍎🍎"), ("10", "DEU", "🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎"),
+]
 DIFFS = [("Fàcil", "facil"), ("Normal", "normal"), ("Difícil", "dificil")]
 OPS = [("SUMA", "Sumes", "suma"), ("RESTA", "Restes", "resta"), ("MULT", "Multiplicació", "mult")]
 INNO_KINDS = [("TOTS", "Tots"), ("AMICS", "Amics"), ("DESCOMPON", "Descompon"),
@@ -282,6 +302,110 @@ def autofocus_answer(nonce):
             </script>
         """ % nonce, height=0)
 
+def canvas_caligrafia(glif, nonce):
+    """Llenc per resseguir la lletra amb el dit (tauleta) o el ratoli.
+
+    Fet a ma amb <canvas> en lloc de streamlit-drawable-canvas: cap dependencia
+    externa que pugui petar al desplegament, i funciona amb el dit al mobil.
+    """
+    minus = glif.lower()
+    html = ("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Andika','Trebuchet MS',sans-serif; background:transparent; }
+  #wrap { display:flex; flex-direction:column; gap:8px; align-items:center; }
+  #c { background:#fff; border:6px dashed #4BCFFA; border-radius:22px; touch-action:none;
+       width:100%; max-width:640px; display:block; cursor:crosshair; }
+  #barra { display:flex; gap:8px; width:100%; max-width:640px; }
+  button { flex:1; font-family:'Andika',sans-serif; font-weight:700; font-size:1rem;
+           color:#fff; border:none; border-radius:14px; height:46px; cursor:pointer; }
+  #esborra { background:#EE5253; box-shadow:0 4px 0 #B33; }
+  #gruix   { background:#20BF6B; box-shadow:0 4px 0 #0B7A45; }
+  button:active { transform:translateY(3px); box-shadow:none; }
+</style>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="barra">
+    <button id="esborra">🧽 ESBORRA</button>
+    <button id="gruix">✏️ GRUIX</button>
+  </div>
+</div>
+<script>
+  const GLIF = "__GLIF__", MINUS = "__MINUS__", NONCE = "__NONCE__";
+  const c = document.getElementById('c'), ctx = c.getContext('2d');
+  const GRUIXOS = [16, 26, 9]; let ig = 0;
+  let pintant = false, traces = [];
+
+  function mida() {
+    const w = Math.min(c.parentElement.clientWidth, 640);
+    const h = Math.round(w * 0.52);
+    const dpr = window.devicePixelRatio || 1;
+    c.width = w * dpr; c.height = h * dpr;
+    c.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redibuixa();
+  }
+  function guia() {
+    const w = c.clientWidth, h = c.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    // pauta: linies del quadern
+    ctx.strokeStyle = '#EAF6FF'; ctx.lineWidth = 2;
+    [0.25, 0.5, 0.75].forEach(f => {
+      ctx.beginPath(); ctx.moveTo(14, h*f); ctx.lineTo(w-14, h*f); ctx.stroke();
+    });
+    // el glif, gran i clar, per resseguir a sobre
+    const txt = GLIF + '  ' + MINUS;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    let px = h * 0.72;
+    ctx.font = px + "px Andika, 'Trebuchet MS', sans-serif";
+    while (ctx.measureText(txt).width > w - 40 && px > 12) {
+      px -= 2; ctx.font = px + "px Andika, 'Trebuchet MS', sans-serif";
+    }
+    ctx.fillStyle = '#EDEDED';
+    ctx.fillText(txt, w/2, h/2);
+    ctx.strokeStyle = '#C9C9C9'; ctx.lineWidth = 2; ctx.setLineDash([8, 7]);
+    ctx.strokeText(txt, w/2, h/2);
+    ctx.setLineDash([]);
+  }
+  function redibuixa() {
+    guia();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#EE5253';
+    for (const t of traces) {
+      if (t.p.length < 2) continue;
+      ctx.lineWidth = t.w; ctx.beginPath();
+      ctx.moveTo(t.p[0].x, t.p[0].y);
+      for (let i = 1; i < t.p.length; i++) ctx.lineTo(t.p[i].x, t.p[i].y);
+      ctx.stroke();
+    }
+  }
+  function pos(e) {
+    const r = c.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  c.addEventListener('pointerdown', e => {
+    pintant = true; c.setPointerCapture(e.pointerId);
+    traces.push({ w: GRUIXOS[ig], p: [pos(e)] }); redibuixa();
+  });
+  c.addEventListener('pointermove', e => {
+    if (!pintant) return;
+    traces[traces.length-1].p.push(pos(e)); redibuixa();
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev =>
+    c.addEventListener(ev, () => { pintant = false; }));
+  document.getElementById('esborra').onclick = () => { traces = []; redibuixa(); };
+  document.getElementById('gruix').onclick = () => { ig = (ig + 1) % GRUIXOS.length; };
+  window.addEventListener('resize', mida);
+  document.fonts && document.fonts.ready.then(redibuixa);
+  mida();
+</script>
+"""
+        .replace("__GLIF__", glif)
+        .replace("__MINUS__", minus)
+        .replace("__NONCE__", nonce))
+    components.html(html, height=430)
+
+
 # ------------------------------------------------------------ GENERADORS
 def _pyramid_html(bottom, ask_top=True):
     rows = ["<div class='pyr-row'><div class='brick ask'>?</div></div>",
@@ -442,6 +566,9 @@ def new_problem():
     ss.problem_html = None
     block, diff = ss.current_block, ss.diff
 
+    if block == "Lletres":
+        ss.problem_text = "caligrafia"     # marca perque la guarda d'inici no torni a entrar
+        return
     if block == "Lectura":
         if not ss.words_pool:
             pool = LECTURA_WORDS[diff].copy(); random.shuffle(pool); ss.words_pool = pool
@@ -489,7 +616,7 @@ DEFAULTS = {
     'kind_label': "", 'lectura_avis': False,
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
-    'base': None, 'nom_actiu': '',
+    'base': None, 'nom_actiu': '', 'lletra_idx': 0, 'lletra_set': 'Lletres',
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -504,7 +631,24 @@ def start_block(block):
     ss.current_block = block
     ss.words_pool = []; ss.reading_pos = ss.rival_pos = 0; ss.lectura_avis = False
     if block == "Repte": new_repte()
+    if block == "Lletres": ss.lletra_idx = 0
     new_problem()
+
+def lletres_actual():
+    taula = ABECEDARI if st.session_state.lletra_set == "Lletres" else NUMEROS
+    i = st.session_state.lletra_idx % len(taula)
+    return taula[i], i, len(taula)
+
+
+def lletres_mou(delta):
+    taula = ABECEDARI if st.session_state.lletra_set == "Lletres" else NUMEROS
+    st.session_state.lletra_idx = (st.session_state.lletra_idx + delta) % len(taula)
+
+
+def set_lletra_set(quin):
+    st.session_state.lletra_set = quin
+    st.session_state.lletra_idx = 0
+
 
 def set_mode(m):
     st.session_state.mode = m; new_problem()
@@ -637,6 +781,7 @@ if st.session_state.current_block == "Home":
         "<div class='chip'>🧮 Sumes, restes i taules</div>"
         "<div class='chip'>💡 Amics, dobles, sèries i piràmides</div>"
         "<div class='chip'>📖 Carrera de lectura</div>"
+        "<div class='chip'>✏️ Resseguir lletres i números amb el dit</div>"
         "<div class='chip'>🏆 10 exercicis que s'adapten a tu</div></div>", unsafe_allow_html=True)
     s = st.session_state
     total = s.encerts + s.errors
@@ -744,18 +889,30 @@ else:
         active += [f"ctl_op_{op_slug}", f"sb_op_{op_slug}"]
     if ss.current_block == "Innovamat":
         active.append("sb_kind_" + slugify(ss.inno_kind))
+    if ss.current_block == "Lletres":
+        active = ["ctl_set_lletres"] if ss.lletra_set == "Lletres" else ["ctl_set_numeros"]
     st.markdown("<style>" + "".join(
         f".st-key-{k} button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
         f" box-shadow: 0 5px 0px #0B7A45 !important; }}" for k in active) + "</style>", unsafe_allow_html=True)
 
     # Barra sempre visible (si la sidebar es col.lapsa, els botons segueixen aqui)
     with st.container(key="controlbar"):
-        cols = st.columns(4)
-        cols[0].button("🏠", key="ctl_home", use_container_width=True,
-                       on_click=lambda: st.session_state.update(current_block="Home"))
-        for col, (label, slug) in zip(cols[1:], DIFFS):
-            col.button(label.upper(), key=f"ctl_lvl_{slug}", use_container_width=True,
-                       on_click=set_diff, args=(label,))
+        if ss.current_block == "Lletres":
+            # Nomes nivell basic: aqui es tria abecedari o numeros, no dificultat
+            cols = st.columns([1, 2, 2])
+            cols[0].button("🏠", key="ctl_home", use_container_width=True,
+                           on_click=lambda: st.session_state.update(current_block="Home"))
+            cols[1].button("🔤 LLETRES", key="ctl_set_lletres", use_container_width=True,
+                           on_click=set_lletra_set, args=("Lletres",))
+            cols[2].button("🔢 NÚMEROS", key="ctl_set_numeros", use_container_width=True,
+                           on_click=set_lletra_set, args=("Números",))
+        else:
+            cols = st.columns(4)
+            cols[0].button("🏠", key="ctl_home", use_container_width=True,
+                           on_click=lambda: st.session_state.update(current_block="Home"))
+            for col, (label, slug) in zip(cols[1:], DIFFS):
+                col.button(label.upper(), key=f"ctl_lvl_{slug}", use_container_width=True,
+                           on_click=set_diff, args=(label,))
         if ss.current_block == "Mates":
             ocols = st.columns(3)
             for col, (label, mode, slug) in zip(ocols, OPS):
@@ -781,15 +938,19 @@ else:
                 if st.button(label, key=key, use_container_width=True):
                     set_inno_kind(kind); safe_rerun()
             st.markdown("---")
-        for label, slug in DIFFS:
-            if st.button(label.upper(), key=f"sb_lvl_{slug}", use_container_width=True):
-                set_diff(label); safe_rerun()
+        if ss.current_block != "Lletres":
+            for label, slug in DIFFS:
+                if st.button(label.upper(), key=f"sb_lvl_{slug}", use_container_width=True):
+                    set_diff(label); safe_rerun()
 
     with st.container(key="maincard"):
         if ss.current_block == "Repte":
             r = ss.repte
             st.markdown(f"<h3>REPTE • {r['i'] + 1} de {REPTE_LEN} • NIVELL {ss.diff.upper()}</h3>", unsafe_allow_html=True)
             st.progress(r["i"] / REPTE_LEN)
+        elif ss.current_block == "Lletres":
+            (glif, paraula, dib), i, total = lletres_actual()
+            st.markdown(f"<h3>LLETRES I NÚMEROS • {i + 1} de {total}</h3>", unsafe_allow_html=True)
         else:
             extra = f" • {ss.inno_kind.upper()}" if ss.current_block == "Innovamat" else ""
             st.markdown(f"<h3>{ss.current_block.upper()} • {ss.diff.upper()}{extra}</h3>", unsafe_allow_html=True)
@@ -816,6 +977,25 @@ else:
                     ss.last_status = "incorrect"; ss.reading_pos = ss.rival_pos = 0
                 new_problem()
                 safe_rerun()
+        elif ss.current_block == "Lletres":
+            (glif, paraula, dib), i, total = lletres_actual()
+            if ss.lletra_set == "Lletres":
+                rotul = f"{glif} {glif.lower()}"
+                peu = f"<b>{glif}</b> de <b>{paraula}</b> {dib}"
+            else:
+                rotul = glif
+                peu = f"<b>{glif}</b> · {paraula} <span style='font-size:1.4rem;'>{dib}</span>"
+            st.markdown(
+                f"<div style='text-align:center; font-family:Bungee; font-size:2.6rem;"
+                f" color:#EE5253; line-height:1;'>{rotul}</div>"
+                f"<p style='text-align:center; font-size:1.25rem; margin:6px 0 2px 0;'>{peu}</p>",
+                unsafe_allow_html=True)
+            canvas_caligrafia(glif, f"{ss.lletra_set}-{i}")
+            nav = st.columns(2)
+            nav[0].button("⬅️ ANTERIOR", key="lle_prev", use_container_width=True,
+                          on_click=lletres_mou, args=(-1,))
+            nav[1].button("SEGÜENT ➡️", key="lle_next", use_container_width=True,
+                          on_click=lletres_mou, args=(1,))
         else:
             body = ss.problem_html or ss.problem_text
             mida = "" if ss.problem_html or len(ss.problem_text) <= 22 else (
@@ -833,7 +1013,8 @@ else:
                     st.warning("Escriu un número abans de comprovar 😉")
                 else:
                     check_answer(int(val)); safe_rerun()
-        st.markdown(f"<div class='scoreboard'><div class='chip'>⭐ {ss.punts}</div><div class='chip'>🔥 RATXA: {ss.ratxa}</div></div>", unsafe_allow_html=True)
+        if ss.current_block != "Lletres":
+            st.markdown(f"<div class='scoreboard'><div class='chip'>⭐ {ss.punts}</div><div class='chip'>🔥 RATXA: {ss.ratxa}</div></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------- OVERLAY
 if st.session_state.last_status:
