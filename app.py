@@ -9,9 +9,13 @@ from sqlalchemy import create_engine, text
 
 st.set_page_config(page_title="Aventura Matemàtica", page_icon="🧮", layout="wide", initial_sidebar_state="expanded")
 
-BLOCKS = [("🧮", "MATES", "Mates"), ("💡", "INNOVAMAT", "Innovamat"),
-          ("📖", "LECTURA", "Lectura"), ("✏️", "LLETRES I NÚMEROS", "Lletres"),
-          ("🏆", "REPTE", "Repte")]
+BLOCKS = [
+    ("🧮", "MATES", "Mates", "Sumes, restes i taules"),
+    ("💡", "INNOVAMAT", "Innovamat", "Amics, dobles, sèries i piràmides"),
+    ("📖", "LECTURA", "Lectura", "Carrera de lectura"),
+    ("✏️", "LLETRES I NÚMEROS", "Lletres", "Resseguir lletres i números amb el dit"),
+    ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
+]
 
 # ---- Caligrafia: l'abecedari catala amb una paraula d'exemple per a cada lletra ----
 ABECEDARI = [
@@ -213,41 +217,74 @@ def local_css():
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Bungee&display=swap');
     html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
     .stApp { background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%); background-attachment: fixed; }
+    /* dins de cada columna, el botó i la seva descripció han d'anar junts;
+       Streamlit hi posa un buit vertical per defecte que els separava massa */
+    .st-key-homeblocks div[data-testid="stVerticalBlock"] { gap: 0.15rem !important; }
+    .desc { background: rgba(255,255,255,0.92); border-radius: 14px; padding: 8px 10px;
+             margin: 4px 0 0 0; min-height: 62px; display: flex; align-items: center;
+             justify-content: center; text-align: center; font-size: 0.86rem;
+             line-height: 1.25; color: #2D3436; box-shadow: 0 3px 0 rgba(0,0,0,0.06); }
     .st-key-controlbar { margin-bottom: 8px; }
     .st-key-controlbar button { height: 46px !important; font-size: 1.05rem !important; }
     .st-key-maincard { background: rgba(255,255,255,0.9); border-radius: 30px; padding: 1.5rem 1.5rem 0.5rem 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .problem-box { font-family: 'Bungee', cursive !important; font-size: 3.5rem; min-height: 140px; border-radius: 25px; background: white; border: 8px dashed #FF6B6B; display: flex; align-items: center; justify-content: center; margin: 15px auto; color: #2D3436; text-align: center; padding: 10px; }
     div[data-testid="stNumberInput"] { height: 140px !important; }
-    div[data-testid="stNumberInput"] > div { height: 140px !important; }
+    div[data-testid="stNumberInput"] > div { height: 140px !important; border: none !important; box-shadow: none !important; background: transparent !important; }
+    div[data-testid="stNumberInput"] div[data-baseweb="base-input"] { border: none !important; background: transparent !important; }
     div[data-testid="stNumberInput"] div[data-baseweb="input"] { background: white !important; border-radius: 25px !important; border: 8px solid #FF6B6B !important; height: 140px !important; }
     div[data-testid="stNumberInput"] div[data-baseweb="input"] input { height: 140px !important; font-family: 'Bungee', cursive !important; font-size: 3.5rem !important; text-align: center !important; border: none !important; outline: none !important; }
     button[data-testid="stNumberInputStepUp"], button[data-testid="stNumberInputStepDown"] { display: none !important; }
     input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
-    div.stButton > button, div[data-testid="stFormSubmitButton"] > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; height: 60px !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; }
-    /* ---------------- MÒBIL ----------------
+    div.stButton > button, div[data-testid="stFormSubmitButton"] > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; min-height: 60px !important; height: auto !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; padding: 8px 10px !important; }
+    div.stButton > button p, div[data-testid="stFormSubmitButton"] > button p { white-space: normal !important; word-break: break-word !important; line-height: 1.15 !important; }
+    /* els 5 blocs de la home: lletra més petita perquè hi càpiga "LLETRES I NÚMEROS" */
+    .st-key-homeblocks div.stButton > button { font-size: 1.05rem !important; min-height: 66px !important; }
+    /* ---------------- TAULETA I MÒBIL ----------------
        Molts nens hi jugaran des del mòbil, així que tot s'ha d'adaptar:
        columnes que s'apilen, botons i tipografies més petits, GIF que no se'n surt. */
+    @media (max-width: 1024px) {
+      .st-key-homeblocks div.stButton > button { font-size: 0.95rem !important; }
+    }
     @media (max-width: 767px) {
       section[data-testid="stSidebar"] { display: none !important; }
       div[data-testid="stMainBlockContainer"] { padding: 0.6rem 0.7rem 3rem 0.7rem !important; }
       /* les columnes deixen de ser una fila estreta i passen a dues per línia */
-      div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; gap: 6px !important; }
+      div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important;
+        column-gap: 6px !important; row-gap: 30px !important; }
       div[data-testid="stColumn"] { flex: 1 1 calc(50% - 6px) !important; min-width: calc(50% - 6px) !important; }
-      h2 { font-size: 1.35rem !important; }
+      h2 { font-size: 1.3rem !important; }
       h3 { font-size: 1rem !important; }
+      .desc { min-height: 50px; font-size: 0.76rem; padding: 6px 8px; margin-top: 3px; }
       .problem-box { font-size: 1.9rem !important; min-height: 92px !important; border-width: 5px !important; padding: 6px !important; }
       div[data-testid="stNumberInput"], div[data-testid="stNumberInput"] > div,
       div[data-testid="stNumberInput"] div[data-baseweb="input"] { height: 92px !important; }
       div[data-testid="stNumberInput"] div[data-baseweb="input"] { border-width: 5px !important; }
       div[data-testid="stNumberInput"] div[data-baseweb="input"] input { height: 92px !important; font-size: 2.2rem !important; }
       div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
-        height: 52px !important; font-size: 1.05rem !important; padding: 0 6px !important; }
-      .st-key-controlbar button { height: 44px !important; font-size: 0.85rem !important; }
+        min-height: 52px !important; font-size: 1.02rem !important; }
+      .st-key-homeblocks div.stButton > button { font-size: 0.9rem !important; min-height: 58px !important; }
+      .st-key-controlbar div[data-testid="stColumn"] { flex: 1 1 0 !important; min-width: 0 !important; }
+      .st-key-controlbar div[data-testid="stHorizontalBlock"] { row-gap: 6px !important; }
+      .st-key-controlbar button { min-height: 44px !important; font-size: 0.74rem !important;
+        padding: 4px 2px !important; }
       .st-key-maincard { padding: 0.9rem 0.8rem 0.4rem 0.8rem !important; border-radius: 20px !important; }
       .brick { min-width: 56px !important; height: 46px !important; font-size: 1.15rem !important; border-width: 3px !important; }
       .chip { font-size: 0.78rem !important; padding: 5px 10px !important; }
       .race-track { height: 46px !important; }
+      .car { font-size: 1.5rem !important; }
+      .gif-overlay img { max-width: 86vw !important; max-height: 45vh !important; height: auto !important; }
+      .gif-overlay h1 { font-size: 1.8rem !important; text-align: center !important; padding: 0 12px !important; }
+      .rank-row { font-size: 0.85rem !important; padding: 6px 8px !important; gap: 6px !important; }
+      .rank-row .rank-pct { display: none !important; }
+    }
+    /* mòbils molt estrets: un botó per línia */
+    @media (max-width: 380px) {
+      div[data-testid="stColumn"] { flex: 1 1 100% !important; min-width: 100% !important; }
+      .desc { min-height: 0; }
+      .problem-box { font-size: 1.5rem !important; }
+    }
+    .race-track { height: 46px !important; }
       .car { font-size: 1.5rem !important; }
       .gif-overlay img { max-width: 86vw !important; max-height: 45vh !important; height: auto !important; }
       .gif-overlay h1 { font-size: 1.8rem !important; text-align: center !important; padding: 0 12px !important; }
@@ -272,6 +309,11 @@ def local_css():
     .brick.ask { background: white; border: 5px dashed #EE5253; color: #EE5253; }
     .st-key-autofocus { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-autofocus iframe { height: 0 !important; border: 0 !important; display: block !important; }
+    [data-testid="stHeaderActionElements"] { display: none !important; }
+    [data-testid="InputInstructions"] { display: none !important; }
+    /* el llenç de caligrafia s'ajusta sol: el contenidor l'ha de seguir */
+    div[data-testid="stElementContainer"]:has(> iframe[data-testid="stIFrame"]) { height: auto !important; }
+    @media (max-width: 767px) { .st-key-maincard iframe[data-testid="stIFrame"] { max-height: 300px; } }
     #MainMenu, footer, header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -338,8 +380,10 @@ def canvas_caligrafia(glif, nonce):
   let pintant = false, traces = [];
 
   function mida() {
+    // l'alcada la mana la finestra del component (no l'amplada): aixi no queda
+    // mai un buit blanc a sota, ni al mobil ni al PC
     const w = Math.min(c.parentElement.clientWidth, 640);
-    const h = Math.round(w * 0.52);
+    const h = Math.max(140, window.innerHeight - 62);
     const dpr = window.devicePixelRatio || 1;
     c.width = w * dpr; c.height = h * dpr;
     c.style.height = h + 'px';
@@ -403,7 +447,7 @@ def canvas_caligrafia(glif, nonce):
         .replace("__GLIF__", glif)
         .replace("__MINUS__", minus)
         .replace("__NONCE__", nonce))
-    components.html(html, height=430)
+    components.html(html, height=300)
 
 
 # ------------------------------------------------------------ GENERADORS
@@ -773,16 +817,13 @@ if st.session_state.current_block == "Home":
     st.markdown(f"<p style='font-size:1.1rem;'>{hola}Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     with st.container(key="homeblocks"):
         cols = st.columns(len(BLOCKS))
-    for col, (icon, label, block) in zip(cols, BLOCKS):
+    # La descripcio va DINS de la columna del seu boto: aixi queda alineada
+    # sempre. Abans anaven totes en una fila a part i es descolocaven en
+    # arribar al final de linia.
+    for col, (icon, label, block, desc) in zip(cols, BLOCKS):
         col.button(f"{icon} {label}", key=f"home_{block}", use_container_width=True,
                    on_click=start_block, args=(block,))
-    st.markdown(
-        "<div class='scoreboard'>"
-        "<div class='chip'>🧮 Sumes, restes i taules</div>"
-        "<div class='chip'>💡 Amics, dobles, sèries i piràmides</div>"
-        "<div class='chip'>📖 Carrera de lectura</div>"
-        "<div class='chip'>✏️ Resseguir lletres i números amb el dit</div>"
-        "<div class='chip'>🏆 10 exercicis que s'adapten a tu</div></div>", unsafe_allow_html=True)
+        col.markdown(f"<div class='desc'>{desc}</div>", unsafe_allow_html=True)
     s = st.session_state
     total = s.encerts + s.errors
     if total:
