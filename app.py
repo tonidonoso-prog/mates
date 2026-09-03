@@ -714,6 +714,16 @@ def start_block(block):
     if block == "Lletres": ss.lletra_idx = 0
     new_problem()
 
+def de_o_d(paraula):
+    """En catala 'de' es contreu davant de vocal o h: d'avio, d'hotel, d'illa.
+    Excepcio: la i i la u semiconsonants no es contreuen (de iogurt)."""
+    if paraula.upper().startswith(("IO", "IU", "HI", "UA", "UE", "UI")):
+        return f"de {paraula.lower()}"
+    if paraula[0].upper() in "AEIOUÀÈÉÍÒÓÚH":
+        return f"d'{paraula.lower()}"
+    return f"de {paraula.lower()}"
+
+
 def lletres_actual():
     taula = ABECEDARI if st.session_state.lletra_set == "Lletres" else NUMEROS
     i = st.session_state.lletra_idx % len(taula)
@@ -1068,12 +1078,12 @@ else:
                 f"<p style='text-align:center; font-size:1.25rem; margin:6px 0 2px 0;'>{peu}</p>",
                 unsafe_allow_html=True)
             if ss.lletra_set == "Lletres":
-                frase = f"{veu.capitalize()}. {paraula.capitalize()}."
+                frase = f"Lletra {veu}, {de_o_d(paraula)}."
             elif glif == "0":
-                frase = "Zero. Cap poma."
+                frase = "Número zero. Cap poma."
             else:
-                quantitat = "Una poma" if glif == "1" else f"{veu.capitalize()} pomes"
-                frase = f"{veu.capitalize()}. {quantitat}."
+                quantitat = "una poma" if glif == "1" else f"{veu} pomes"
+                frase = f"Número {veu}. {quantitat.capitalize()}."
             canvas_caligrafia(glif, f"{ss.lletra_set}-{i}", frase)
             nav = st.columns(2)
             nav[0].button("⬅️ ANTERIOR", key="lle_prev", use_container_width=True,
