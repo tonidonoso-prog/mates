@@ -18,21 +18,26 @@ BLOCKS = [
 ]
 
 # ---- Caligrafia: l'abecedari catala amb una paraula d'exemple per a cada lletra ----
+# (glif, paraula d'exemple, dibuix, com es diu la lletra en veu alta)
 ABECEDARI = [
-    ("A", "AVIÓ", "✈️"), ("B", "BALENA", "🐋"), ("C", "CASA", "🏠"), ("D", "DAU", "🎲"),
-    ("E", "ELEFANT", "🐘"), ("F", "FLOR", "🌸"), ("G", "GAT", "🐱"), ("H", "HOTEL", "🏨"),
-    ("I", "ILLA", "🏝️"), ("J", "JOGUINA", "🧸"), ("K", "KIWI", "🥝"), ("L", "LUPA", "🔍"),
-    ("M", "MÀ", "✋"), ("N", "NAS", "👃"), ("O", "OS", "🐻"), ("P", "PILOTA", "⚽"),
-    ("Q", "QUADRE", "🖼️"), ("R", "RODA", "🛞"), ("S", "SOL", "☀️"), ("T", "TAULA", "🪑"),
-    ("U", "UNGLA", "💅"), ("V", "VACA", "🐮"), ("W", "WIFI", "📶"), ("X", "XOCOLATA", "🍫"),
-    ("Y", "IOGURT", "🥛"), ("Z", "ZEBRA", "🦓"), ("Ç", "TAÇA", "☕"),
-    ("LL", "LLUNA", "🌙"), ("NY", "MUNTANYA", "⛰️"),
+    ("A", "AVIÓ", "✈️", "a"), ("B", "BALENA", "🐋", "be"), ("C", "CASA", "🏠", "ce"),
+    ("D", "DAU", "🎲", "de"), ("E", "ELEFANT", "🐘", "e"), ("F", "FLOR", "🌸", "efa"),
+    ("G", "GAT", "🐱", "ge"), ("H", "HOTEL", "🏨", "hac"), ("I", "ILLA", "🏝️", "i"),
+    ("J", "JOGUINA", "🧸", "jota"), ("K", "KIWI", "🥝", "ca"), ("L", "LUPA", "🔍", "ela"),
+    ("M", "MÀ", "✋", "ema"), ("N", "NAS", "👃", "ena"), ("O", "OS", "🐻", "o"),
+    ("P", "PILOTA", "⚽", "pe"), ("Q", "QUADRE", "🖼️", "cu"), ("R", "RODA", "🛞", "erra"),
+    ("S", "SOL", "☀️", "essa"), ("T", "TAULA", "🪑", "te"), ("U", "UNGLA", "💅", "u"),
+    ("V", "VACA", "🐮", "ve"), ("W", "WIFI", "📶", "ve doble"), ("X", "XOCOLATA", "🍫", "ics"),
+    ("Y", "IOGURT", "🥛", "i grega"), ("Z", "ZEBRA", "🦓", "zeta"),
+    ("Ç", "TAÇA", "☕", "ce trencada"), ("LL", "LLUNA", "🌙", "ela doble"),
+    ("NY", "MUNTANYA", "⛰️", "ena i grega"),
 ]
 NUMEROS = [
-    ("0", "ZERO", ""), ("1", "U", "🍎"), ("2", "DOS", "🍎🍎"), ("3", "TRES", "🍎🍎🍎"),
-    ("4", "QUATRE", "🍎🍎🍎🍎"), ("5", "CINC", "🍎🍎🍎🍎🍎"), ("6", "SIS", "🍎🍎🍎🍎🍎🍎"),
-    ("7", "SET", "🍎🍎🍎🍎🍎🍎🍎"), ("8", "VUIT", "🍎🍎🍎🍎🍎🍎🍎🍎"),
-    ("9", "NOU", "🍎🍎🍎🍎🍎🍎🍎🍎🍎"), ("10", "DEU", "🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎"),
+    ("0", "ZERO", "", "zero"), ("1", "U", "🍎", "u"), ("2", "DOS", "🍎🍎", "dos"),
+    ("3", "TRES", "🍎🍎🍎", "tres"), ("4", "QUATRE", "🍎🍎🍎🍎", "quatre"),
+    ("5", "CINC", "🍎🍎🍎🍎🍎", "cinc"), ("6", "SIS", "🍎🍎🍎🍎🍎🍎", "sis"),
+    ("7", "SET", "🍎🍎🍎🍎🍎🍎🍎", "set"), ("8", "VUIT", "🍎🍎🍎🍎🍎🍎🍎🍎", "vuit"),
+    ("9", "NOU", "🍎🍎🍎🍎🍎🍎🍎🍎🍎", "nou"), ("10", "DEU", "🍎🍎🍎🍎🍎🍎🍎🍎🍎🍎", "deu"),
 ]
 DIFFS = [("Fàcil", "facil"), ("Normal", "normal"), ("Difícil", "dificil")]
 OPS = [("SUMA", "Sumes", "suma"), ("RESTA", "Restes", "resta"), ("MULT", "Multiplicació", "mult")]
@@ -344,7 +349,7 @@ def autofocus_answer(nonce):
             </script>
         """ % nonce, height=0)
 
-def canvas_caligrafia(glif, nonce):
+def canvas_caligrafia(glif, nonce, frase=""):
     """Llenc per resseguir la lletra amb el dit (tauleta) o el ratoli.
 
     Fet a ma amb <canvas> en lloc de streamlit-drawable-canvas: cap dependencia
@@ -362,16 +367,21 @@ def canvas_caligrafia(glif, nonce):
   #barra { display:flex; gap:8px; width:100%; max-width:640px; }
   button { flex:1; font-family:'Andika',sans-serif; font-weight:700; font-size:1rem;
            color:#fff; border:none; border-radius:14px; height:46px; cursor:pointer; }
+  #escolta { background:#4B7BEC; box-shadow:0 4px 0 #2D5BC7; }
   #esborra { background:#EE5253; box-shadow:0 4px 0 #B33; }
   #gruix   { background:#20BF6B; box-shadow:0 4px 0 #0B7A45; }
+  #avis { font-size:0.72rem; color:#888; text-align:center; min-height:14px; }
+  @media (max-width:420px) { button { font-size:0.82rem; } }
   button:active { transform:translateY(3px); box-shadow:none; }
 </style>
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="barra">
+    <button id="escolta">🔊 ESCOLTA</button>
     <button id="esborra">🧽 ESBORRA</button>
     <button id="gruix">✏️ GRUIX</button>
   </div>
+  <div id="avis"></div>
 </div>
 <script>
   const GLIF = "__GLIF__", MINUS = "__MINUS__", NONCE = "__NONCE__";
@@ -437,6 +447,31 @@ def canvas_caligrafia(glif, nonce):
   });
   ['pointerup','pointercancel','pointerleave'].forEach(ev =>
     c.addEventListener(ev, () => { pintant = false; }));
+  // ---- Veu: Web Speech API, ja inclosa al navegador ----
+  const FRASE = "__FRASE__";
+  function veuCatalana() {
+    const vs = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+    return vs.find(v => /^ca(-|_|$)/i.test(v.lang))          // catala
+        || vs.find(v => /^es(-|_|$)/i.test(v.lang))          // si no n'hi ha, castella
+        || vs[0] || null;
+  }
+  function parla() {
+    if (!window.speechSynthesis) {
+      document.getElementById('avis').textContent = "Aquest navegador no pot llegir en veu alta.";
+      return;
+    }
+    speechSynthesis.cancel();                                 // no encavalcar veus
+    const u = new SpeechSynthesisUtterance(FRASE);
+    const v = veuCatalana();
+    if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = 'ca-ES'; }
+    u.rate = 0.85;                                            // a poc a poc, son nens
+    speechSynthesis.speak(u);
+    const av = document.getElementById('avis');
+    av.textContent = (v && /^ca/i.test(v.lang)) ? "" :
+      (v ? "Sense veu catalana al dispositiu: es fa servir " + v.lang : "");
+  }
+  document.getElementById('escolta').onclick = parla;
+  if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};  // forca carregar-les
   document.getElementById('esborra').onclick = () => { traces = []; redibuixa(); };
   document.getElementById('gruix').onclick = () => { ig = (ig + 1) % GRUIXOS.length; };
   window.addEventListener('resize', mida);
@@ -446,8 +481,9 @@ def canvas_caligrafia(glif, nonce):
 """
         .replace("__GLIF__", glif)
         .replace("__MINUS__", minus)
-        .replace("__NONCE__", nonce))
-    components.html(html, height=300)
+        .replace("__NONCE__", nonce)
+        .replace("__FRASE__", frase.replace('"', "'")))
+    components.html(html, height=330)
 
 
 # ------------------------------------------------------------ GENERADORS
@@ -990,7 +1026,7 @@ else:
             st.markdown(f"<h3>REPTE • {r['i'] + 1} de {REPTE_LEN} • NIVELL {ss.diff.upper()}</h3>", unsafe_allow_html=True)
             st.progress(r["i"] / REPTE_LEN)
         elif ss.current_block == "Lletres":
-            (glif, paraula, dib), i, total = lletres_actual()
+            (glif, paraula, dib, veu), i, total = lletres_actual()
             st.markdown(f"<h3>LLETRES I NÚMEROS • {i + 1} de {total}</h3>", unsafe_allow_html=True)
         else:
             extra = f" • {ss.inno_kind.upper()}" if ss.current_block == "Innovamat" else ""
@@ -1019,7 +1055,7 @@ else:
                 new_problem()
                 safe_rerun()
         elif ss.current_block == "Lletres":
-            (glif, paraula, dib), i, total = lletres_actual()
+            (glif, paraula, dib, veu), i, total = lletres_actual()
             if ss.lletra_set == "Lletres":
                 rotul = f"{glif} {glif.lower()}"
                 peu = f"<b>{glif}</b> de <b>{paraula}</b> {dib}"
@@ -1031,7 +1067,14 @@ else:
                 f" color:#EE5253; line-height:1;'>{rotul}</div>"
                 f"<p style='text-align:center; font-size:1.25rem; margin:6px 0 2px 0;'>{peu}</p>",
                 unsafe_allow_html=True)
-            canvas_caligrafia(glif, f"{ss.lletra_set}-{i}")
+            if ss.lletra_set == "Lletres":
+                frase = f"{veu.capitalize()}. {paraula.capitalize()}."
+            elif glif == "0":
+                frase = "Zero. Cap poma."
+            else:
+                quantitat = "Una poma" if glif == "1" else f"{veu.capitalize()} pomes"
+                frase = f"{veu.capitalize()}. {quantitat}."
+            canvas_caligrafia(glif, f"{ss.lletra_set}-{i}", frase)
             nav = st.columns(2)
             nav[0].button("⬅️ ANTERIOR", key="lle_prev", use_container_width=True,
                           on_click=lletres_mou, args=(-1,))
