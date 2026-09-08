@@ -14,8 +14,12 @@ BLOCKS = [
     ("💡", "INNOVAMAT", "Innovamat", "Amics, dobles, sèries i piràmides"),
     ("📖", "LECTURA", "Lectura", "Carrera de lectura"),
     ("✏️", "LLETRES I NÚMEROS", "Lletres", "Resseguir lletres i números amb el dit"),
+    ("🔍", "SOPA DE LLETRES", "Sopa", "Troba les paraules amagades"),
+    ("🧠", "MEMORY", "Memory", "Gira les cartes i troba les parelles"),
+    ("🎨", "COLOREJA", "Colors", "Pinta 100 dibuixos amb la paleta"),
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
+SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
 
 # ---- Caligrafia: l'abecedari catala amb una paraula d'exemple per a cada lletra ----
 # (glif, paraula d'exemple, dibuix, com es diu la lletra en veu alta)
@@ -216,6 +220,84 @@ LECTURA_WORDS = {
     "Difícil": ["L'ORDINADOR ÉS VELL", "EL LLIBRE ÉS DIVERTIT", "L'ESTRUÇ CORRE MOLT", "EL FRIGORÍFIC ÉS BLANC", "UN CONEIXEMENT PROFUND", "EL BOLÍGRAF ÉS BLAU", "LES MATEMÀTIQUES SÓN FÀCILS", "UNA ENCICLOPÈDIA MOLT GRAN", "UNA TRANSFORMACIÓ MÀGICA", "UN RECONEIXEMENT RÀPID", "EXCURSIÓ A LA MUNTANYA", "UN VIATGE MOLT LLUNY", "UNA PARAULA COMPLICADA", "LA BIBLIOTECA PÚBLICA", "IMAGINACIÓ SENSE LÍMITS", "UNA GRAN RESPONSABILITAT", "UN EXPERIMENT CIENTÍFIC", "UN INSTRUMENT MUSICAL", "UNA FOTOGRAFIA BONICA", "L'ARQUITECTURA MODERNA", "UN ASTRONAUTA VALENT", "UN PALEONTÒLEG FAMÓS", "UNA INVESTIGACIÓ SECRETA", "UN ESPECTACLE INCREÏBLE", "EL MEU GAT ÉS BLANC", "LA NENA ÉS BONA", "EL SOL ÉS GROC", "M'AGRADA MOLT LLEGIR", "JUGAR AMB ELS AMICS", "ANAR A L'ESCOLA", "MENJAR UNA POMA", "VEURE LA TELEVISIÓ", "DORMIR MOLT BÉ", "CANTAR UNA CANÇÓ", "BALLAR TOTA LA NIT", "ESCRIURE UNA CARTA", "DIBUIXAR UN QUADRE", "CÓRRER PEL CAMP", "SALTAR MOLT ALT", "NEDAR A LA MAR"]
 }
 
+# ---- Sopa de lletres: paraules en majuscules i sense accents (com a les sopes de
+# paper). Cap paraula amb apostrof, amb C-trencada ni palindroma (es trobaria dos cops).
+SOPA_WORDS = {
+    "Fàcil": ["GAT", "GOS", "SOL", "MAR", "CASA", "NENA", "POMA", "BOLA", "RODA",
+              "LLIT", "PEIX", "FOC", "CEL", "MEL", "NEU", "PEU", "DIT", "NAS", "ULL",
+              "COR", "TREN", "LLUNA", "TAULA", "FLOR", "VACA", "RIU", "PILA",
+              "LLET", "PAU", "FIL", "VOL", "ARBRE", "SOPA", "PARC", "CASC", "PORC",
+              "LLOP", "MICO", "GALL", "RATA", "NIU", "MOTO", "BUS", "DAU", "BEC"],
+    "Normal": ["ESCOLA", "AMIC", "AMIGA", "LLIBRE", "PILOTA", "GIRAFA", "ELEFANT",
+               "SABATA", "PORTA", "FINESTRA", "CADIRA", "CUINA", "JARDI", "PLATJA",
+               "BOSC", "MUNTANYA", "ESTRELLA", "CAMIO", "AVIO", "CONILL", "TORTUGA",
+               "POLLET", "FORMIGA", "DOFI", "BALENA", "TIGRE", "LLEO", "COTXE",
+               "VAIXELL", "PASTIS", "GALETA", "TARONJA", "MADUIXA", "PLATAN", "PERA",
+               "RAIM", "LLIMONA", "CIRERA", "PIRATA", "CASTELL", "TRESOR", "DRAC",
+               "BRUIXA", "MAGIA", "PLUJA", "VENT", "ARENA",
+               "OVELLA", "CAVALL", "ANEC", "GRANOTA", "SERP", "CARGOL", "ABELLA"],
+    "Difícil": ["BICICLETA", "PAPALLONA", "ORDINADOR", "DINOSAURE", "ASTRONAUTA",
+                "XOCOLATA", "BIBLIOTECA", "MATEMATIQUES", "ESQUIROL", "HIPOPOTAM",
+                "COCODRIL", "RINOCERONT", "HELICOPTER", "SUBMARI", "TELEVISIO",
+                "FRIGORIFIC", "EXCURSIO", "GUITARRA", "TROMPETA", "VOLCA", "PLANETA",
+                "UNIVERS", "AVENTURA", "PRINCESA", "CAVALLER", "FANTASMA", "ESQUELET",
+                "CARBASSA", "PINGUI", "CANGUR", "GIRASOL", "ARCOIRIS", "TEMPESTA",
+                "LABERINT", "MISTERI", "DETECTIU", "CIENTIFIC", "ROBOT", "COET",
+                "SATELLIT", "GALAXIA", "MUNTANYA", "ESTRELLA", "FINESTRA", "PAPERERA",
+                "MOTXILLA", "ESTOIG", "LLAPIS", "PISSARRA", "CALCULADORA"],
+}
+# n = mida de la graella, k = paraules per sopa, dirs = direccions en que s'amaguen
+# (fila, columna), bonus = punts extra per acabar-la
+SOPA_CFG = {
+    "Fàcil":   {"n": 8,  "k": 5, "dirs": [(0, 1), (1, 0)], "bonus": 2},
+    "Normal":  {"n": 10, "k": 7, "dirs": [(0, 1), (1, 0), (1, 1), (-1, 1)], "bonus": 4},
+    "Difícil": {"n": 13, "k": 9, "dirs": [(0, 1), (1, 0), (1, 1), (-1, 1),
+                                          (0, -1), (-1, 0), (-1, -1), (1, -1)], "bonus": 6},
+}
+DIRS8 = [(0, 1), (1, 0), (1, 1), (-1, 1), (0, -1), (-1, 0), (-1, -1), (1, -1)]
+
+# ---- Memory: parelles d'emojis (es veuen igual a qualsevol mobil, sense descarregar res)
+MEMORY_SETS = {
+    "Animals": ["🐶", "🐱", "🐭", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸",
+                "🐵", "🐔", "🐧", "🦉", "🦄", "🐝", "🦋", "🐢", "🐙", "🐬", "🐳", "🦒", "🐘"],
+    "Menjar": ["🍎", "🍌", "🍇", "🍓", "🍒", "🍑", "🍍", "🥝", "🍉", "🍋", "🥕", "🌽", "🍕",
+               "🍔", "🍟", "🌭", "🍿", "🧁", "🍩", "🍪", "🍫", "🍭", "🍦", "🥐", "🧀", "🥑"],
+    "Coses": ["🚗", "🚀", "✈️", "🚂", "🚲", "⛵", "🎈", "🎁", "⚽", "🏀", "🎸", "🎹", "🎲",
+              "🧩", "🪁", "🎯", "🔑", "⏰", "💡", "📚", "🖍️", "✂️", "🧸", "🎪", "🏰", "🌈"],
+}
+# n = parelles, bonus = punts extra per acabar
+MEMORY_CFG = {"Fàcil": {"n": 6, "bonus": 2}, "Normal": {"n": 8, "bonus": 4},
+              "Difícil": {"n": 15, "bonus": 6}}
+
+# ---- Coloreja: 100 dibuixos. Cada un es un emoji convertit en dibuix de linia
+# dins del navegador (contorn negre, interior blanc) que el nen omple amb la paleta.
+DIBUIXOS = [
+    ("🐶", "GOS"), ("🐱", "GAT"), ("🐭", "RATOLÍ"), ("🐰", "CONILL"), ("🦊", "GUINEU"),
+    ("🐻", "OS"), ("🐼", "PANDA"), ("🐨", "COALA"), ("🐯", "TIGRE"), ("🦁", "LLEÓ"),
+    ("🐮", "VACA"), ("🐷", "PORC"), ("🐸", "GRANOTA"), ("🐵", "MICO"), ("🐔", "GALLINA"),
+    ("🐧", "PINGÜÍ"), ("🦉", "MUSSOL"), ("🦄", "UNICORN"), ("🐝", "ABELLA"), ("🦋", "PAPALLONA"),
+    ("🐢", "TORTUGA"), ("🐙", "POP"), ("🐬", "DOFÍ"), ("🐳", "BALENA"), ("🦒", "GIRAFA"),
+    ("🐘", "ELEFANT"), ("🦓", "ZEBRA"), ("🐴", "CAVALL"), ("🐑", "OVELLA"), ("🐊", "COCODRIL"),
+    ("🦖", "DINOSAURE"), ("🐞", "MARIETA"), ("🐌", "CARGOL"), ("🐟", "PEIX"), ("🦀", "CRANC"),
+    ("🦈", "TAURÓ"), ("🐿️", "ESQUIROL"), ("🦔", "ERIÇÓ"), ("🦜", "LLORO"), ("🦚", "PAÓ"),
+    ("🍎", "POMA"), ("🍌", "PLÀTAN"), ("🍇", "RAÏM"), ("🍓", "MADUIXA"), ("🍒", "CIRERES"),
+    ("🍍", "PINYA"), ("🍉", "SÍNDRIA"), ("🍋", "LLIMONA"), ("🥕", "PASTANAGA"), ("🍕", "PIZZA"),
+    ("🍔", "HAMBURGUESA"), ("🧁", "MAGDALENA"), ("🍩", "DÒNUT"), ("🍦", "GELAT"), ("🎂", "PASTÍS"),
+    ("🚗", "COTXE"), ("🚀", "COET"), ("✈️", "AVIÓ"), ("🚂", "TREN"), ("🚲", "BICICLETA"),
+    ("⛵", "VELER"), ("🚁", "HELICÒPTER"), ("🚜", "TRACTOR"), ("🚒", "BOMBERS"), ("🚌", "AUTOBÚS"),
+    ("🎈", "GLOBUS"), ("🎁", "REGAL"), ("⚽", "PILOTA"), ("🎸", "GUITARRA"), ("🎲", "DAU"),
+    ("🧸", "OSSET"), ("🪁", "ESTEL"), ("🏰", "CASTELL"), ("🌈", "ARC DE SANT MARTÍ"), ("⭐", "ESTRELLA"),
+    ("🌞", "SOL"), ("🌙", "LLUNA"), ("☁️", "NÚVOL"), ("🌸", "FLOR"), ("🌻", "GIRA-SOL"),
+    ("🌵", "CACTUS"), ("🌳", "ARBRE"), ("🍄", "BOLET"), ("🏠", "CASA"), ("⛄", "NINOT DE NEU"),
+    ("🎃", "CARBASSA"), ("🎄", "ARBRE DE NADAL"), ("👑", "CORONA"), ("🧙", "MAG"), ("🧚", "FADA"),
+    ("🤖", "ROBOT"), ("👻", "FANTASMA"), ("🦸", "SUPERHEROI"), ("🧜", "SIRENA"), ("🐉", "DRAC"),
+    ("🎪", "CIRC"), ("🎠", "CAVALLET"), ("🚤", "LLANXA"), ("🛸", "OVNI"), ("🏄", "SURFISTA"),
+]
+assert len(DIBUIXOS) == 100, len(DIBUIXOS)
+# lletres de farciment amb la frequencia aproximada del catala
+SOPA_FARCIT = "AAAAAEEEEEIIIOOOOUURRRSSSTTTLLLNNNMMCCDDPPBGVFXJZH"
+
+
 def local_css():
     st.markdown("""
     <style>
@@ -243,7 +325,7 @@ def local_css():
     input[type=number] { -moz-appearance: textfield; }
     div.stButton > button, div[data-testid="stFormSubmitButton"] > button { background: linear-gradient(180deg, #FF6B6B 0%, #EE5253 100%) !important; color: white !important; font-family: 'Bungee', cursive !important; font-size: 1.5rem !important; min-height: 60px !important; height: auto !important; border-radius: 15px !important; box-shadow: 0 5px 0px #D63031 !important; border: none !important; padding: 8px 10px !important; }
     div.stButton > button p, div[data-testid="stFormSubmitButton"] > button p { white-space: normal !important; word-break: break-word !important; line-height: 1.15 !important; }
-    /* els 5 blocs de la home: lletra més petita perquè hi càpiga "LLETRES I NÚMEROS" */
+    /* els 6 blocs de la home: lletra més petita perquè hi càpiga "LLETRES I NÚMEROS" */
     .st-key-homeblocks div.stButton > button { font-size: 1.05rem !important; min-height: 66px !important; }
     /* ---------------- TAULETA I MÒBIL ----------------
        Molts nens hi jugaran des del mòbil, així que tot s'ha d'adaptar:
@@ -270,6 +352,8 @@ def local_css():
         min-height: 52px !important; font-size: 1.02rem !important; }
       .st-key-homeblocks div.stButton > button { font-size: 0.9rem !important; min-height: 58px !important; }
       .st-key-controlbar div[data-testid="stColumn"] { flex: 1 1 0 !important; min-width: 0 !important; }
+      /* Coloreja: la columna de "SORPRESA" necessita mes ample que les d'icona */
+      .st-key-controlbar div[data-testid="stColumn"]:has(.st-key-ctl_dib_rand) { flex: 2.6 1 0 !important; }
       .st-key-controlbar div[data-testid="stHorizontalBlock"] { row-gap: 6px !important; }
       .st-key-controlbar button { min-height: 44px !important; font-size: 0.74rem !important;
         padding: 4px 2px !important; }
@@ -318,7 +402,12 @@ def local_css():
     [data-testid="InputInstructions"] { display: none !important; }
     /* el llenç de caligrafia s'ajusta sol: el contenidor l'ha de seguir */
     div[data-testid="stElementContainer"]:has(> iframe[data-testid="stIFrame"]) { height: auto !important; }
-    @media (max-width: 767px) { .st-key-maincard iframe[data-testid="stIFrame"] { max-height: 300px; } }
+    @media (max-width: 767px) { .st-key-caligrafia iframe[data-testid="stIFrame"] { max-height: 300px; } }
+    /* boto invisible que la sopa de lletres clica sola quan s'han trobat totes les paraules */
+    .st-key-sopa_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
+    .st-key-sopa_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
+    .st-key-memory_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
+    .st-key-memory_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
     #MainMenu, footer, header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -483,7 +572,396 @@ def canvas_caligrafia(glif, nonce, frase=""):
         .replace("__MINUS__", minus)
         .replace("__NONCE__", nonce)
         .replace("__FRASE__", frase.replace('"', "'")))
-    components.html(html, height=330)
+    with st.container(key="caligrafia"):
+        components.html(html, height=330)
+
+
+def sopa_component(sopa, nonce):
+    """Graella interactiva de la sopa de lletres.
+
+    Es marca arrossegant amb el dit (mobil) o el ratoli en linia recta. Tot es
+    resol dins del navegador; quan s'han trobat totes les paraules, el script
+    clica el boto invisible 'sopa_done' de la pagina i Streamlit suma els punts.
+    Sense dependencies externes (com el llenc de caligrafia). Mai format amb %.
+    """
+    n = sopa["n"]
+    html = ("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Andika','Trebuchet MS',sans-serif; background:transparent;
+         user-select:none; -webkit-user-select:none; }
+  #wrap { display:flex; flex-direction:column; gap:8px; align-items:center; }
+  #llista { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:640px; }
+  .paraula { background:#fff; border:2px solid #F7B731; border-radius:12px; padding:2px 10px;
+             font-weight:700; font-size:0.95rem; color:#2D3436; letter-spacing:1px; }
+  .paraula.trobada { background:#20BF6B; border-color:#0B7A45; color:#fff; text-decoration:line-through; }
+  #graella { display:grid; background:#fff; border:6px dashed #4BCFFA; border-radius:22px;
+             padding:8px; touch-action:none; gap:2px; cursor:pointer; }
+  .cel { display:flex; align-items:center; justify-content:center; font-weight:700;
+         color:#2D3436; border-radius:8px; line-height:1; }
+  .cel.sel { background:#FFE08A; }
+  .cel.ok { color:#fff; }
+  #msg { font-weight:700; color:#EE5253; text-align:center; min-height:22px; font-size:1.1rem; }
+  @media (max-width:420px) { .paraula { font-size:0.78rem; padding:1px 7px; } }
+</style>
+<div id="wrap">
+  <div id="llista"></div>
+  <div id="graella"></div>
+  <div id="msg"></div>
+</div>
+<script>
+  const GRID = __GRID__, WORDS = __WORDS__, N = __N__, NONCE = "__NONCE__";
+  const COLORS = ['#FF6B6B','#4B7BEC','#20BF6B','#F7B731','#A55EEA','#FD9644','#2BCBBA','#EB3B5A','#0FB9B1','#8854D0'];
+  const graella = document.getElementById('graella'), llista = document.getElementById('llista'),
+        msg = document.getElementById('msg');
+  const trobades = new Set(); let cels = [], start = null, cur = [], acabat = false;
+
+  WORDS.forEach(w => { const d = document.createElement('div'); d.className = 'paraula';
+                       d.id = 'p_' + w; d.textContent = w; llista.appendChild(d); });
+  for (let r = 0; r < N; r++) { cels.push([]);
+    for (let c = 0; c < N; c++) {
+      const d = document.createElement('div'); d.className = 'cel';
+      d.dataset.r = r; d.dataset.c = c; d.textContent = GRID[r][c];
+      graella.appendChild(d); cels[r].push(d);
+    } }
+  function mida() {
+    const W = Math.min(document.body.clientWidth, 640);
+    const H = window.innerHeight - llista.offsetHeight - msg.offsetHeight - 24;
+    const cel = Math.max(22, Math.floor(Math.min((W - 30) / N, (H - 30) / N, 56)));
+    graella.style.gridTemplateColumns = 'repeat(' + N + ',' + cel + 'px)';
+    cels.flat().forEach(d => { d.style.width = d.style.height = cel + 'px';
+                               d.style.fontSize = Math.round(cel * 0.58) + 'px'; });
+  }
+  function celA(e) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    return (el && el.classList.contains('cel')) ? {r: +el.dataset.r, c: +el.dataset.c} : null;
+  }
+  function linia(a, b) {
+    const dr = b.r - a.r, dc = b.c - a.c;
+    if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) return null;
+    const n = Math.max(Math.abs(dr), Math.abs(dc)), sr = Math.sign(dr), sc = Math.sign(dc), out = [];
+    for (let i = 0; i <= n; i++) out.push({r: a.r + sr * i, c: a.c + sc * i});
+    return out;
+  }
+  function marca(l) {
+    cur.forEach(p => cels[p.r][p.c].classList.remove('sel'));
+    cur = l; cur.forEach(p => cels[p.r][p.c].classList.add('sel'));
+  }
+  function comprova() {
+    const s = cur.map(p => GRID[p.r][p.c]).join('');
+    const inv = s.split('').reverse().join('');
+    const w = WORDS.find(x => !trobades.has(x) && (x === s || x === inv));
+    if (!w) return;
+    trobades.add(w);
+    const col = COLORS[(trobades.size - 1) % COLORS.length];
+    cur.forEach(p => { const d = cels[p.r][p.c]; d.classList.add('ok'); d.style.background = col; });
+    document.getElementById('p_' + w).classList.add('trobada');
+    if (trobades.size === WORDS.length) acaba();
+  }
+  function acaba() {
+    if (acabat) return; acabat = true;
+    msg.textContent = 'LES HAS TROBAT TOTES! 🎉';
+    setTimeout(() => {
+      try {
+        const b = window.parent.document.querySelector('.st-key-sopa_done button');
+        if (b) { b.click(); return; }
+      } catch (e) {}
+      msg.textContent = 'LES HAS TROBAT TOTES! Prem NOVA SOPA 🎉';
+    }, 900);
+  }
+  graella.addEventListener('pointerdown', e => {
+    if (acabat) return;
+    const c = celA(e); if (!c) return;
+    start = c; graella.setPointerCapture(e.pointerId); marca([c]); e.preventDefault();
+  });
+  graella.addEventListener('pointermove', e => {
+    if (!start) return;
+    const c = celA(e); if (!c) return;
+    const l = linia(start, c); if (l) marca(l);
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => graella.addEventListener(ev, () => {
+    if (!start) return;
+    comprova(); start = null; marca([]);
+  }));
+  window.addEventListener('resize', mida);
+  document.fonts && document.fonts.ready.then(mida);
+  mida();
+</script>
+"""
+        .replace("__GRID__", json.dumps(sopa["grid"]))
+        .replace("__WORDS__", json.dumps(sopa["words"]))
+        .replace("__N__", str(n))
+        .replace("__NONCE__", nonce))
+    components.html(html, height={8: 520, 10: 610, 13: 740}.get(n, 60 * n))
+
+
+def memory_component(mem, nonce):
+    """Joc de memory: cartes que es giren en tocar-les. Tot passa al navegador i,
+    en trobar totes les parelles, el script clica el boto invisible 'memory_done'."""
+    html = ("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Andika:wght@700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Andika','Trebuchet MS',sans-serif; background:transparent;
+         user-select:none; -webkit-user-select:none; }
+  #wrap { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  #info { font-weight:700; color:#2D3436; font-size:1rem; }
+  #taula { display:grid; gap:8px; justify-content:center; }
+  .carta { perspective:600px; cursor:pointer; }
+  .cara { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+          border-radius:14px; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+  .darrere { background:linear-gradient(135deg,#4B7BEC,#A55EEA); color:#fff; box-shadow:0 4px 0 #2D5BC7; }
+  .davant { background:#fff; border:3px solid #F7B731; transform:rotateY(180deg); }
+  .interior { position:relative; width:100%; height:100%; transition:transform 0.35s; transform-style:preserve-3d; }
+  .carta.girada .interior { transform:rotateY(180deg); }
+  .carta.parella .davant { border-color:#20BF6B; background:#E9FFF3; }
+  #msg { font-weight:700; color:#EE5253; text-align:center; min-height:22px; font-size:1.1rem; }
+</style>
+<div id="wrap">
+  <div id="info"></div>
+  <div id="taula"></div>
+  <div id="msg"></div>
+</div>
+<script>
+  const CARDS = __CARDS__, NONCE = "__NONCE__";
+  const taula = document.getElementById('taula'), info = document.getElementById('info'),
+        msg = document.getElementById('msg');
+  let obertes = [], bloquejat = false, intents = 0, parelles = 0, acabat = false, els = [];
+  function pinta() { info.textContent = 'Parelles: ' + parelles + ' / ' + (CARDS.length / 2) + '   ·   Intents: ' + intents; }
+  CARDS.forEach((e, i) => {
+    const c = document.createElement('div'); c.className = 'carta'; c.dataset.i = i;
+    c.innerHTML = '<div class="interior"><div class="cara darrere">?</div><div class="cara davant">' + e + '</div></div>';
+    c.addEventListener('pointerdown', ev => { ev.preventDefault(); gira(c); });
+    taula.appendChild(c); els.push(c);
+  });
+  function gira(c) {
+    if (bloquejat || acabat || c.classList.contains('girada')) return;
+    c.classList.add('girada'); obertes.push(c);
+    if (obertes.length < 2) return;
+    intents++; bloquejat = true;
+    const [a, b] = obertes;
+    if (CARDS[a.dataset.i] === CARDS[b.dataset.i]) {
+      a.classList.add('parella'); b.classList.add('parella'); parelles++;
+      obertes = []; bloquejat = false; pinta();
+      if (parelles === CARDS.length / 2) acaba();
+    } else {
+      setTimeout(() => { a.classList.remove('girada'); b.classList.remove('girada');
+                         obertes = []; bloquejat = false; }, 800);
+    }
+    pinta();
+  }
+  function acaba() {
+    acabat = true; msg.textContent = 'TOTES LES PARELLES! 🎉';
+    setTimeout(() => {
+      try {
+        const b = window.parent.document.querySelector('.st-key-memory_done button');
+        if (b) { b.click(); return; }
+      } catch (e) {}
+      msg.textContent = 'TOTES LES PARELLES! Prem NOVA PARTIDA 🎉';
+    }, 900);
+  }
+  function mida() {
+    const W = Math.min(document.body.clientWidth, 720), n = CARDS.length;
+    const H = window.innerHeight - info.offsetHeight - msg.offsetHeight - 24;
+    let millor = {cols: 4, mida: 0};
+    [3, 4, 5, 6].forEach(cols => {
+      const files = Math.ceil(n / cols);
+      const m = Math.min((W - 8 * (cols - 1)) / cols, (H - 8 * (files - 1)) / files, 120);
+      if (m > millor.mida) millor = {cols: cols, mida: m};
+    });
+    const m = Math.floor(millor.mida);
+    taula.style.gridTemplateColumns = 'repeat(' + millor.cols + ',' + m + 'px)';
+    els.forEach(c => { c.style.width = c.style.height = m + 'px';
+                       c.querySelector('.davant').style.fontSize = Math.round(m * 0.58) + 'px';
+                       c.querySelector('.darrere').style.fontSize = Math.round(m * 0.5) + 'px'; });
+  }
+  window.addEventListener('resize', mida);
+  pinta(); mida();
+</script>
+"""
+        .replace("__CARDS__", json.dumps(mem["cards"], ensure_ascii=False))
+        .replace("__NONCE__", nonce))
+    components.html(html, height={6: 430, 8: 470, 15: 600}.get(len(mem["cards"]) // 2, 500))
+
+
+def coloreja_component(emoji, nom, nonce):
+    """Pagina per pintar: l'emoji es converteix en un dibuix de linia (contorn negre)
+    i el nen omple les zones amb el cubell o pinta amb el pinzell. Paleta a la dreta.
+    Dues capes: a sota els colors, a sobre les linies (sempre nitides)."""
+    html = ("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Andika:wght@700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Andika','Trebuchet MS',sans-serif; background:transparent;
+         user-select:none; -webkit-user-select:none; }
+  #wrap { display:flex; gap:8px; align-items:flex-start; justify-content:center; }
+  #zona { position:relative; border:6px dashed #4BCFFA; border-radius:22px; background:#fff;
+          overflow:hidden; touch-action:none; }
+  canvas { display:block; position:absolute; left:0; top:0; }
+  #linies { pointer-events:none; }
+  #paleta { display:grid; grid-template-columns:repeat(2, 1fr); gap:6px; }
+  .color { width:34px; height:34px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 2px #ccc;
+           cursor:pointer; }
+  .color.actiu { box-shadow:0 0 0 4px #2D3436; transform:scale(1.12); }
+  #eines { display:flex; flex-direction:column; gap:6px; margin-top:8px; grid-column:1 / -1; }
+  .eina { font-family:inherit; font-weight:700; font-size:0.9rem; color:#fff; border:none;
+          border-radius:12px; height:40px; cursor:pointer; background:#4B7BEC; box-shadow:0 3px 0 #2D5BC7; }
+  .eina.actiu { background:#20BF6B; box-shadow:0 3px 0 #0B7A45; }
+  .eina.vermell { background:#EE5253; box-shadow:0 3px 0 #B33; }
+  .eina:active { transform:translateY(3px); box-shadow:none; }
+  #avis { position:absolute; left:0; right:0; bottom:8px; text-align:center; font-size:0.8rem; color:#888; }
+  @media (max-width:420px) { .color { width:28px; height:28px; } .eina { font-size:0.8rem; height:36px; } }
+</style>
+<div id="wrap">
+  <div id="zona"><canvas id="pintura"></canvas><canvas id="linies"></canvas><div id="avis"></div></div>
+  <div id="paleta">
+    <div id="eines">
+      <button class="eina actiu" id="cubell">🪣 OMPLE</button>
+      <button class="eina" id="pinzell">🖌️ PINTA</button>
+      <button class="eina" id="desfes">↩️ DESFÉS</button>
+      <button class="eina vermell" id="neteja">🧽 NETEJA</button>
+    </div>
+  </div>
+</div>
+<script>
+  const EMOJI = "__EMOJI__", NONCE = "__NONCE__", S = 480;
+  const COLORS = ['#EE5253','#FF9F43','#FECA57','#F9E79F','#20BF6B','#7BED9F','#1E90FF','#48DBFB',
+                  '#5F27CD','#A55EEA','#FF6B81','#FFC0CB','#8B4513','#D2B48C','#2D3436','#95A5A6','#FFFFFF','#00CEC9'];
+  const zona = document.getElementById('zona'), pintura = document.getElementById('pintura'),
+        linies = document.getElementById('linies'), paleta = document.getElementById('paleta'),
+        eines = document.getElementById('eines'), avis = document.getElementById('avis');
+  const pctx = pintura.getContext('2d', {willReadFrequently: true}), lctx = linies.getContext('2d');
+  pintura.width = pintura.height = linies.width = linies.height = S;
+  let color = COLORS[0], mode = 'cubell', mask = null, historial = [], pintant = false, teLinies = false;
+
+  COLORS.forEach((c, i) => {
+    const d = document.createElement('div'); d.className = 'color' + (i === 0 ? ' actiu' : '');
+    d.style.background = c;
+    d.onclick = () => { color = c; paleta.querySelectorAll('.color').forEach(x => x.classList.remove('actiu')); d.classList.add('actiu'); };
+    paleta.insertBefore(d, eines);
+  });
+  function setMode(m) {
+    mode = m;
+    document.getElementById('cubell').classList.toggle('actiu', m === 'cubell');
+    document.getElementById('pinzell').classList.toggle('actiu', m === 'pinzell');
+  }
+  document.getElementById('cubell').onclick = () => setMode('cubell');
+  document.getElementById('pinzell').onclick = () => setMode('pinzell');
+  document.getElementById('desfes').onclick = () => { if (historial.length) pctx.putImageData(historial.pop(), 0, 0); };
+  document.getElementById('neteja').onclick = () => { guarda(); pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, S, S); };
+  function guarda() { historial.push(pctx.getImageData(0, 0, S, S)); if (historial.length > 15) historial.shift(); }
+
+  // ---- de l'emoji al dibuix de linia ----
+  // Gradient de Sobel sobre color + silueta: capta tambe les vores suaus
+  // (antialiasing) que una simple comparacio de veins es deixava, i aixi el
+  // cubell no s'escapa entre zones. Despres s'engruixeix 1px i s'esborren
+  // les taques petites (punts solts que fa el propi emoji).
+  function dibuixaLinies() {
+    const off = document.createElement('canvas'); off.width = off.height = S;
+    const o = off.getContext('2d', {willReadFrequently: true});
+    o.textAlign = 'center'; o.textBaseline = 'middle';
+    o.font = Math.round(S * 0.72) + 'px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    o.fillText(EMOJI, S / 2, S / 2 + S * 0.03);
+    const d = o.getImageData(0, 0, S, S).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 60) n++;
+    if (n < 500) return false;                       // l'emoji no s'ha pogut dibuixar
+    const ch = [0, 1, 2, 3].map(() => new Float32Array(S * S));
+    for (let i = 0; i < S * S; i++) {
+      const a = d[i*4+3] / 255, w = 255 * (1 - a);
+      ch[0][i] = d[i*4] * a + w; ch[1][i] = d[i*4+1] * a + w; ch[2][i] = d[i*4+2] * a + w; ch[3][i] = d[i*4+3];
+    }
+    const T = 60, linia = new Uint8Array(S * S);
+    for (let y = 1; y < S - 1; y++) for (let x = 1; x < S - 1; x++) {
+      const i = y * S + x; let mag = 0;
+      for (let c = 0; c < 4; c++) { const v = ch[c];
+        const gx = -v[i-S-1] + v[i-S+1] - 2*v[i-1] + 2*v[i+1] - v[i+S-1] + v[i+S+1];
+        const gy = -v[i-S-1] - 2*v[i-S] - v[i-S+1] + v[i+S-1] + 2*v[i+S] + v[i+S+1];
+        mag += Math.sqrt(gx*gx + gy*gy) * (c === 3 ? 2 : 1); }
+      if (mag > T * 4) linia[i] = 1;
+    }
+    mask = new Uint8Array(S * S);
+    for (let y = 1; y < S - 1; y++) for (let x = 1; x < S - 1; x++) {
+      const i = y * S + x;
+      if (linia[i] || linia[i-1] || linia[i+1] || linia[i-S] || linia[i+S]) mask[i] = 1;
+    }
+    // fora les taques de menys de 50 pixels
+    const etiq = new Uint8Array(S * S);
+    for (let s0 = 0; s0 < S * S; s0++) {
+      if (!mask[s0] || etiq[s0]) continue;
+      const comp = [s0], pila = [s0]; etiq[s0] = 1;
+      while (pila.length) {
+        const i = pila.pop(), x = i % S;
+        for (const j of [x > 0 ? i-1 : -1, x < S-1 ? i+1 : -1, i >= S ? i-S : -1, i < S*(S-1) ? i+S : -1]) {
+          if (j >= 0 && mask[j] && !etiq[j]) { etiq[j] = 1; pila.push(j); comp.push(j); }
+        }
+      }
+      if (comp.length < 50) comp.forEach(i => { mask[i] = 0; });
+    }
+    const img = lctx.createImageData(S, S), p = img.data;
+    for (let i = 0; i < S * S; i++) { if (mask[i]) { p[i*4] = p[i*4+1] = p[i*4+2] = 34; p[i*4+3] = 255; } }
+    lctx.putImageData(img, 0, 0);
+    return true;
+  }
+  function hex2rgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+  function omple(x0, y0) {
+    if (mask && mask[y0 * S + x0]) return;
+    guarda();
+    const img = pctx.getImageData(0, 0, S, S), p = img.data, [R, G, B] = hex2rgb(color);
+    const i0 = (y0 * S + x0) * 4, tr = p[i0], tg = p[i0+1], tb = p[i0+2];
+    if (tr === R && tg === G && tb === B) return;
+    const vist = new Uint8Array(S * S), pila = [y0 * S + x0];
+    while (pila.length) {
+      const i = pila.pop();
+      if (vist[i] || (mask && mask[i])) continue;
+      const k = i * 4;
+      if (Math.abs(p[k] - tr) + Math.abs(p[k+1] - tg) + Math.abs(p[k+2] - tb) > 60) continue;
+      vist[i] = 1; p[k] = R; p[k+1] = G; p[k+2] = B; p[k+3] = 255;
+      const x = i % S;
+      if (x > 0) pila.push(i - 1); if (x < S - 1) pila.push(i + 1);
+      if (i >= S) pila.push(i - S); if (i < S * (S - 1)) pila.push(i + S);
+    }
+    pctx.putImageData(img, 0, 0);
+  }
+  function pos(e) {
+    const r = pintura.getBoundingClientRect();
+    return {x: Math.floor((e.clientX - r.left) * S / r.width), y: Math.floor((e.clientY - r.top) * S / r.height)};
+  }
+  let ultim = null;
+  zona.addEventListener('pointerdown', e => {
+    e.preventDefault(); const p = pos(e);
+    if (p.x < 0 || p.y < 0 || p.x >= S || p.y >= S) return;
+    if (mode === 'cubell') { omple(p.x, p.y); return; }
+    guarda(); pintant = true; zona.setPointerCapture(e.pointerId); ultim = p;
+    pctx.strokeStyle = color; pctx.lineWidth = S / 28; pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+    pctx.beginPath(); pctx.moveTo(p.x, p.y); pctx.lineTo(p.x + 0.1, p.y); pctx.stroke();
+  });
+  zona.addEventListener('pointermove', e => {
+    if (!pintant) return; const p = pos(e);
+    pctx.beginPath(); pctx.moveTo(ultim.x, ultim.y); pctx.lineTo(p.x, p.y); pctx.stroke(); ultim = p;
+  });
+  ['pointerup', 'pointercancel'].forEach(ev => zona.addEventListener(ev, () => { pintant = false; }));
+
+  function mida() {
+    const pal = paleta.offsetWidth + 8;
+    const side = Math.max(160, Math.min(document.body.clientWidth - pal, window.innerHeight - 4, 640));
+    zona.style.width = zona.style.height = side + 'px';
+    pintura.style.width = pintura.style.height = linies.style.width = linies.style.height = (side - 12) + 'px';
+  }
+  pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, S, S);
+  window.addEventListener('resize', mida);
+  mida();
+  function inicia() {
+    teLinies = dibuixaLinies();
+    if (!teLinies) avis.textContent = 'Aquest dispositiu no pot dibuixar-lo: pinta lliurement! 🖌️';
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(inicia); else inicia();
+</script>
+"""
+        .replace("__EMOJI__", emoji)
+        .replace("__NONCE__", nonce))
+    components.html(html, height=560)
 
 
 # ------------------------------------------------------------ GENERADORS
@@ -634,6 +1112,80 @@ def make_inno(diff, kind="Tots"):
 
 RECENT_MAX = 20  # quants exercicis recordem per no repetir-los
 
+def _sopa_ocurrencies(grid, word):
+    """Quantes vegades surt la paraula a la graella, en qualsevol de les 8 direccions."""
+    n, L, count = len(grid), len(word), 0
+    for r in range(n):
+        for c in range(n):
+            for dr, dc in DIRS8:
+                if not (0 <= r + dr * (L - 1) < n and 0 <= c + dc * (L - 1) < n):
+                    continue
+                if all(grid[r + dr * i][c + dc * i] == word[i] for i in range(L)):
+                    count += 1
+    return count
+
+
+def _sopa_tria_paraules(diff):
+    """k paraules del nivell, que capiguen i que cap no sigui dins d'una altra."""
+    cfg = SOPA_CFG[diff]
+    pool = [w for w in SOPA_WORDS[diff] if len(w) <= cfg["n"]]
+    random.shuffle(pool)
+    out = []
+    for w in pool:
+        if any(w in o or w[::-1] in o or o in w or o[::-1] in w for o in out):
+            continue
+        out.append(w)
+        if len(out) == cfg["k"]:
+            break
+    return out
+
+
+def genera_sopa(diff):
+    """Sopa de lletres del nivell: graella n x n amb k paraules amagades, cada una
+    exactament un cop (es comprova a posteriori, perque el farciment aleatori
+    podria formar-ne una altra copia i el nen trobaria 'la que no toca')."""
+    cfg = SOPA_CFG[diff]
+    n = cfg["n"]
+    for _ in range(300):
+        words = _sopa_tria_paraules(diff)
+        grid = [[None] * n for _ in range(n)]
+        ok = True
+        for w in sorted(words, key=len, reverse=True):
+            L = len(w)
+            for _ in range(300):
+                dr, dc = random.choice(cfg["dirs"])
+                r, c = random.randrange(n), random.randrange(n)
+                if not (0 <= r + dr * (L - 1) < n and 0 <= c + dc * (L - 1) < n):
+                    continue
+                cells = [(r + dr * i, c + dc * i) for i in range(L)]
+                if all(grid[x][y] in (None, w[i]) for i, (x, y) in enumerate(cells)):
+                    for i, (x, y) in enumerate(cells):
+                        grid[x][y] = w[i]
+                    break
+            else:
+                ok = False
+                break
+        if not ok:
+            continue
+        for row in grid:
+            for j, ch in enumerate(row):
+                if ch is None:
+                    row[j] = random.choice(SOPA_FARCIT)
+        if all(_sopa_ocurrencies(grid, w) == 1 for w in words):
+            return {"n": n, "grid": ["".join(row) for row in grid],
+                    "words": sorted(words), "level": diff}
+    raise RuntimeError("No s'ha pogut generar la sopa de lletres")
+
+
+def genera_memory(diff):
+    """Parelles barrejades d'un mateix tema (animals, menjar o coses)."""
+    n = MEMORY_CFG[diff]["n"]
+    tema = random.choice(list(MEMORY_SETS))
+    cards = random.sample(MEMORY_SETS[tema], n) * 2
+    random.shuffle(cards)
+    return {"cards": cards, "level": diff, "tema": tema}
+
+
 def _remember(text):
     r = st.session_state.recent
     r.append(text)
@@ -648,6 +1200,19 @@ def new_problem():
 
     if block == "Lletres":
         ss.problem_text = "caligrafia"     # marca perque la guarda d'inici no torni a entrar
+        return
+    if block == "Sopa":
+        ss.problem_text = "sopa"
+        ss.sopa = genera_sopa(diff)
+        ss.sopa_n += 1                     # canvia la clau del component: graella nova de zero
+        return
+    if block == "Memory":
+        ss.problem_text = "memory"
+        ss.memory = genera_memory(diff)
+        ss.memory_n += 1
+        return
+    if block == "Colors":
+        ss.problem_text = "colors"
         return
     if block == "Lectura":
         if not ss.words_pool:
@@ -697,6 +1262,7 @@ DEFAULTS = {
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
     'base': None, 'nom_actiu': '', 'lletra_idx': 0, 'lletra_set': 'Lletres',
+    'sopa': None, 'sopa_n': 0, 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -738,6 +1304,36 @@ def lletres_mou(delta):
 def set_lletra_set(quin):
     st.session_state.lletra_set = quin
     st.session_state.lletra_idx = 0
+
+
+def sopa_completada():
+    """Totes les paraules trobades: punts segons el nivell, GIF i sopa nova."""
+    ss = st.session_state
+    if ss.current_block != "Sopa" or ss.sopa is None:
+        return
+    ss.punts += SOPA_CFG[ss.sopa["level"]]["bonus"]
+    register(True)                         # +1 punt, encert, ratxa i classificacio
+    ss.last_status = "correct"
+    new_problem()
+
+
+def memory_completat():
+    """Totes les parelles trobades: punts segons el nivell, GIF i partida nova."""
+    ss = st.session_state
+    if ss.current_block != "Memory" or ss.memory is None:
+        return
+    ss.punts += MEMORY_CFG[ss.memory["level"]]["bonus"]
+    register(True)
+    ss.last_status = "correct"
+    new_problem()
+
+
+def dibuix_mou(delta):
+    ss = st.session_state
+    if delta is None:
+        ss.dibuix_idx = random.randrange(len(DIBUIXOS))
+    else:
+        ss.dibuix_idx = (ss.dibuix_idx + delta) % len(DIBUIXOS)
 
 
 def set_mode(m):
@@ -861,15 +1457,16 @@ render_header()
 if st.session_state.current_block == "Home":
     hola = f"Hola <b>{st.session_state.nom}</b>! " if st.session_state.nom.strip() else ""
     st.markdown(f"<p style='font-size:1.1rem;'>{hola}Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
-    with st.container(key="homeblocks"):
-        cols = st.columns(len(BLOCKS))
     # La descripcio va DINS de la columna del seu boto: aixi queda alineada
     # sempre. Abans anaven totes en una fila a part i es descolocaven en
-    # arribar al final de linia.
-    for col, (icon, label, block, desc) in zip(cols, BLOCKS):
-        col.button(f"{icon} {label}", key=f"home_{block}", use_container_width=True,
-                   on_click=start_block, args=(block,))
-        col.markdown(f"<div class='desc'>{desc}</div>", unsafe_allow_html=True)
+    # arribar al final de linia. Vuit blocs: dues files de quatre.
+    with st.container(key="homeblocks"):
+        for fila in (BLOCKS[:4], BLOCKS[4:]):
+            cols = st.columns(4)
+            for col, (icon, label, block, desc) in zip(cols, fila):
+                col.button(f"{icon} {label}", key=f"home_{block}", use_container_width=True,
+                           on_click=start_block, args=(block,))
+                col.markdown(f"<div class='desc'>{desc}</div>", unsafe_allow_html=True)
     s = st.session_state
     total = s.encerts + s.errors
     if total:
@@ -978,6 +1575,8 @@ else:
         active.append("sb_kind_" + slugify(ss.inno_kind))
     if ss.current_block == "Lletres":
         active = ["ctl_set_lletres"] if ss.lletra_set == "Lletres" else ["ctl_set_numeros"]
+    if ss.current_block == "Colors":
+        active = []
     st.markdown("<style>" + "".join(
         f".st-key-{k} button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
         f" box-shadow: 0 5px 0px #0B7A45 !important; }}" for k in active) + "</style>", unsafe_allow_html=True)
@@ -993,6 +1592,18 @@ else:
                            on_click=set_lletra_set, args=("Lletres",))
             cols[2].button("🔢 NÚMEROS", key="ctl_set_numeros", use_container_width=True,
                            on_click=set_lletra_set, args=("Números",))
+        elif ss.current_block == "Colors":
+            # Nomes icones: al mobil "ANTERIOR" i "SEGÜENT" es partien en dues linies.
+            # Sense help=: el tooltip embolcalla el boto i perd l'estil vermell de l'app.
+            cols = st.columns([1, 1, 3, 1])
+            cols[0].button("🏠", key="ctl_home", use_container_width=True,
+                           on_click=lambda: st.session_state.update(current_block="Home"))
+            cols[1].button("⬅️", key="ctl_dib_prev", use_container_width=True,
+                           on_click=dibuix_mou, args=(-1,))
+            cols[2].button("🎲 SORPRESA", key="ctl_dib_rand", use_container_width=True,
+                           on_click=dibuix_mou, args=(None,))
+            cols[3].button("➡️", key="ctl_dib_next", use_container_width=True,
+                           on_click=dibuix_mou, args=(1,))
         else:
             cols = st.columns(4)
             cols[0].button("🏠", key="ctl_home", use_container_width=True,
@@ -1025,7 +1636,7 @@ else:
                 if st.button(label, key=key, use_container_width=True):
                     set_inno_kind(kind); safe_rerun()
             st.markdown("---")
-        if ss.current_block != "Lletres":
+        if ss.current_block not in SENSE_NIVELL:
             for label, slug in DIFFS:
                 if st.button(label.upper(), key=f"sb_lvl_{slug}", use_container_width=True):
                     set_diff(label); safe_rerun()
@@ -1038,6 +1649,16 @@ else:
         elif ss.current_block == "Lletres":
             (glif, paraula, dib, veu), i, total = lletres_actual()
             st.markdown(f"<h3>LLETRES I NÚMEROS • {i + 1} de {total}</h3>", unsafe_allow_html=True)
+        elif ss.current_block == "Sopa":
+            st.markdown(f"<h3>SOPA DE LLETRES • {ss.diff.upper()} • TROBA {len(ss.sopa['words'])} PARAULES</h3>",
+                        unsafe_allow_html=True)
+        elif ss.current_block == "Memory":
+            st.markdown(f"<h3>MEMORY • {ss.diff.upper()} • {ss.memory['tema'].upper()} • "
+                        f"{len(ss.memory['cards']) // 2} PARELLES</h3>", unsafe_allow_html=True)
+        elif ss.current_block == "Colors":
+            emoji, nom = DIBUIXOS[ss.dibuix_idx]
+            st.markdown(f"<h3>COLOREJA • DIBUIX {ss.dibuix_idx + 1} DE {len(DIBUIXOS)} • {nom}</h3>",
+                        unsafe_allow_html=True)
         else:
             extra = f" • {ss.inno_kind.upper()}" if ss.current_block == "Innovamat" else ""
             st.markdown(f"<h3>{ss.current_block.upper()} • {ss.diff.upper()}{extra}</h3>", unsafe_allow_html=True)
@@ -1090,6 +1711,27 @@ else:
                           on_click=lletres_mou, args=(-1,))
             nav[1].button("SEGÜENT ➡️", key="lle_next", use_container_width=True,
                           on_click=lletres_mou, args=(1,))
+        elif ss.current_block == "Sopa":
+            st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Arrossega el dit o el ratolí "
+                        "per sobre de les lletres, en línia recta, per marcar cada paraula.</p>",
+                        unsafe_allow_html=True)
+            sopa_component(ss.sopa, f"{ss.diff}-{ss.sopa_n}")
+            # El clica sol el component quan s'han trobat totes (CSS: invisible)
+            st.button("fet", key="sopa_done", on_click=sopa_completada)
+            st.button("🔁 NOVA SOPA", key="sopa_nova", use_container_width=True, on_click=new_problem)
+        elif ss.current_block == "Memory":
+            st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Toca dues cartes. "
+                        "Si són iguals, es queden girades. Troba totes les parelles!</p>",
+                        unsafe_allow_html=True)
+            memory_component(ss.memory, f"{ss.diff}-{ss.memory_n}")
+            st.button("fet", key="memory_done", on_click=memory_completat)
+            st.button("🔁 NOVA PARTIDA", key="memory_nova", use_container_width=True, on_click=new_problem)
+        elif ss.current_block == "Colors":
+            emoji, nom = DIBUIXOS[ss.dibuix_idx]
+            st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Tria un color de la paleta. "
+                        "Amb 🪣 OMPLE toques una zona i s'omple; amb 🖌️ PINTA pintes lliurement.</p>",
+                        unsafe_allow_html=True)
+            coloreja_component(emoji, nom, f"dib-{ss.dibuix_idx}")
         else:
             body = ss.problem_html or ss.problem_text
             mida = "" if ss.problem_html or len(ss.problem_text) <= 22 else (
@@ -1107,7 +1749,7 @@ else:
                     st.warning("Escriu un número abans de comprovar 😉")
                 else:
                     check_answer(int(val)); safe_rerun()
-        if ss.current_block != "Lletres":
+        if ss.current_block not in SENSE_NIVELL:
             st.markdown(f"<div class='scoreboard'><div class='chip'>⭐ {ss.punts}</div><div class='chip'>🔥 RATXA: {ss.ratxa}</div></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------- OVERLAY
