@@ -336,6 +336,10 @@ def dibuix_font(emoji):
 SOPA_FARCIT = "AAAAAEEEEEIIIOOOOUURRRSSSTTTLLLNNNMMCCDDPPBGVFXJZH"
 
 
+# Carrera de lectura: (segons de base, segons per lletra) que es consideren "bon ritme"
+LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.0, 0.33), "Difícil": (1.0, 0.30)}
+
+
 def local_css():
     st.markdown("""
     <style>
@@ -1707,9 +1711,18 @@ else:
                 # Sense cartells ni bloquejos: sempre avances. Pero si claques
                 # sense haver llegit, el rival avanca mes que tu i acabes perdent.
                 minim = max(0.7, 0.16 * len(ss.reading_word))
-                spd = {"Fàcil": 1.5, "Normal": 4.5, "Difícil": 4.5}[ss.diff]
+                # Ritme del rival (9 set 2026, abans era impossible guanyar a Normal i
+                # Dificil): temps objectiu = base + segons per lletra. Llegint just a
+                # aquest ritme s'empata (i guanya el nen, que arriba primer); mes rapid,
+                # el rival queda enrere; mes lent, s'escapa. La base absorbeix la
+                # latencia del rerun de Streamlit, que abans es menjava tot el marge.
+                base, per_lletra = LECTURA_RITME[ss.diff]
+                objectiu = base + per_lletra * len(ss.reading_word)
                 ss.reading_pos += 10
-                ss.rival_pos += 12 if elapsed < minim else 5 + (elapsed - minim) * spd
+                if elapsed < minim:
+                    ss.rival_pos += 12               # clic sense llegir: el rival s'escapa
+                else:
+                    ss.rival_pos += min(16, max(3, 10 * elapsed / objectiu))
                 if ss.reading_pos >= 90:
                     ss.last_status = "correct"; ss.reading_pos = ss.rival_pos = 0
                     ss.punts += 5
