@@ -16,7 +16,7 @@ BLOCKS = [
     ("✏️", "LLETRES I NÚMEROS", "Lletres", "Resseguir lletres i números amb el dit"),
     ("🔍", "SOPA DE LLETRES", "Sopa", "Troba les paraules amagades"),
     ("🧠", "MEMORY", "Memory", "Gira les cartes i troba les parelles"),
-    ("🎨", "COLOREJA", "Colors", "Pinta 100 dibuixos amb la paleta"),
+    ("🎨", "COLOREJA", "Colors", "Pinta més de 100 dibuixos amb la paleta"),
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
 SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
@@ -292,8 +292,46 @@ DIBUIXOS = [
     ("🎃", "CARBASSA"), ("🎄", "ARBRE DE NADAL"), ("👑", "CORONA"), ("🧙", "MAG"), ("🧚", "FADA"),
     ("🤖", "ROBOT"), ("👻", "FANTASMA"), ("🦸", "SUPERHEROI"), ("🧜", "SIRENA"), ("🐉", "DRAC"),
     ("🎪", "CIRC"), ("🎠", "CAVALLET"), ("🚤", "LLANXA"), ("🛸", "OVNI"), ("🏄", "SURFISTA"),
+    # afegits el 9 set 2026: mes animals, dinosaures i personatges (el Toni volia Disney,
+    # Patrulla Canina i Sonic: no es pot per drets d'autor; per a dibuixos propis hi ha
+    # la carpeta dibuixos/ de sota)
+    ("🦕", "DINOSAURE DE COLL LLARG"), ("🦩", "FLAMENC"), ("🦭", "FOCA"), ("🦥", "PERESÓS"),
+    ("🦦", "LLÚDRIA"), ("🦙", "LLAMA"), ("🐫", "CAMELL"), ("🦌", "CÉRVOL"), ("🐆", "LLEOPARD"),
+    ("🐺", "LLOP"), ("🦅", "ÀGUILA"), ("🦢", "CIGNE"), ("🦂", "ESCORPÍ"),
+    ("🥷", "NINJA"), ("🧞", "GENI"), ("👸", "PRINCESA"), ("🤴", "PRÍNCEP"), ("🧛", "VAMPIR"),
+    ("🎅", "PARE NOEL"), ("🏎️", "COTXE DE CURSES"), ("🚓", "COTXE DE POLICIA"),
+    ("🚑", "AMBULÀNCIA"), ("🚢", "VAIXELL"), ("🛵", "MOTO"), ("🎡", "NÒRIA"),
+    ("🎢", "MUNTANYA RUSSA"), ("🎮", "VIDEOJOC"),
 ]
-assert len(DIBUIXOS) == 100, len(DIBUIXOS)
+assert len(set(e for e, _ in DIBUIXOS)) == len(DIBUIXOS), "dibuix repetit"
+# Dibuixos propis: fitxers PNG/JPG a mates/dibuixos/ (contorn negre sobre blanc). El nom del
+# fitxer es el titol (rei_lleo.png -> REI LLEO). Es carreguen com a capa de linies.
+def _dibuixos_propis():
+    out = []
+    carpeta = BASE_DIR / "dibuixos"
+    if not carpeta.is_dir():
+        return out
+    import base64
+    for f in sorted(carpeta.iterdir()):
+        if f.suffix.lower() in (".png", ".jpg", ".jpeg") and f.stat().st_size < 1_500_000:
+            mime = "image/png" if f.suffix.lower() == ".png" else "image/jpeg"
+            data = base64.b64encode(f.read_bytes()).decode()
+            out.append((f"data:{mime};base64,{data}", f.stem.replace("_", " ").replace("-", " ").upper()))
+    return out
+DIBUIXOS = _dibuixos_propis() + DIBUIXOS
+
+
+def dibuix_font(emoji):
+    """Que es passa al component: el SVG de linia d'OpenMoji (dibuixos_svg/<hex>.svg,
+    nitid a qualsevol mida) com a data URI; si no hi es, l'emoji (contorn calculat)."""
+    if emoji.startswith("data:image"):
+        return emoji
+    hexcode = "-".join(f"{ord(c):04X}" for c in emoji if ord(c) != 0xFE0F)
+    f = BASE_DIR / "dibuixos_svg" / f"{hexcode}.svg"
+    if f.is_file():
+        import base64
+        return "data:image/svg+xml;base64," + base64.b64encode(f.read_bytes()).decode()
+    return emoji
 # lletres de farciment amb la frequencia aproximada del catala
 SOPA_FARCIT = "AAAAAEEEEEIIIOOOOUURRRSSSTTTLLLNNNMMCCDDPPBGVFXJZH"
 
@@ -787,7 +825,8 @@ def memory_component(mem, nonce):
 
 def coloreja_component(emoji, nom, nonce):
     """Pagina per pintar: l'emoji es converteix en un dibuix de linia (contorn negre)
-    i el nen omple les zones amb el cubell o pinta amb el pinzell. Paleta a la dreta.
+    i el nen pinta amb el dit o el ratoli. Paleta a la dreta. NOMES pinzell: el Toni
+    va demanar treure el cubell d'omplir zones (9 set 2026).
     Dues capes: a sota els colors, a sobre les linies (sempre nitides)."""
     html = ("""
 <style>
@@ -817,15 +856,14 @@ def coloreja_component(emoji, nom, nonce):
   <div id="zona"><canvas id="pintura"></canvas><canvas id="linies"></canvas><div id="avis"></div></div>
   <div id="paleta">
     <div id="eines">
-      <button class="eina actiu" id="cubell">🪣 OMPLE</button>
-      <button class="eina" id="pinzell">🖌️ PINTA</button>
+      <button class="eina" id="gruix">✏️ GRUIX</button>
       <button class="eina" id="desfes">↩️ DESFÉS</button>
       <button class="eina vermell" id="neteja">🧽 NETEJA</button>
     </div>
   </div>
 </div>
 <script>
-  const EMOJI = "__EMOJI__", NONCE = "__NONCE__", S = 480;
+  const EMOJI = "__EMOJI__", NONCE = "__NONCE__", S = 640;
   const COLORS = ['#EE5253','#FF9F43','#FECA57','#F9E79F','#20BF6B','#7BED9F','#1E90FF','#48DBFB',
                   '#5F27CD','#A55EEA','#FF6B81','#FFC0CB','#8B4513','#D2B48C','#2D3436','#95A5A6','#FFFFFF','#00CEC9'];
   const zona = document.getElementById('zona'), pintura = document.getElementById('pintura'),
@@ -833,7 +871,8 @@ def coloreja_component(emoji, nom, nonce):
         eines = document.getElementById('eines'), avis = document.getElementById('avis');
   const pctx = pintura.getContext('2d', {willReadFrequently: true}), lctx = linies.getContext('2d');
   pintura.width = pintura.height = linies.width = linies.height = S;
-  let color = COLORS[0], mode = 'cubell', mask = null, historial = [], pintant = false, teLinies = false;
+  const GRUIXOS = [S / 24, S / 12, S / 48]; let ig = 0;
+  let color = COLORS[0], historial = [], pintant = false, teLinies = false;
 
   COLORS.forEach((c, i) => {
     const d = document.createElement('div'); d.className = 'color' + (i === 0 ? ' actiu' : '');
@@ -841,13 +880,7 @@ def coloreja_component(emoji, nom, nonce):
     d.onclick = () => { color = c; paleta.querySelectorAll('.color').forEach(x => x.classList.remove('actiu')); d.classList.add('actiu'); };
     paleta.insertBefore(d, eines);
   });
-  function setMode(m) {
-    mode = m;
-    document.getElementById('cubell').classList.toggle('actiu', m === 'cubell');
-    document.getElementById('pinzell').classList.toggle('actiu', m === 'pinzell');
-  }
-  document.getElementById('cubell').onclick = () => setMode('cubell');
-  document.getElementById('pinzell').onclick = () => setMode('pinzell');
+  document.getElementById('gruix').onclick = () => { ig = (ig + 1) % GRUIXOS.length; };
   document.getElementById('desfes').onclick = () => { if (historial.length) pctx.putImageData(historial.pop(), 0, 0); };
   document.getElementById('neteja').onclick = () => { guarda(); pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, S, S); };
   function guarda() { historial.push(pctx.getImageData(0, 0, S, S)); if (historial.length > 15) historial.shift(); }
@@ -855,7 +888,7 @@ def coloreja_component(emoji, nom, nonce):
   // ---- de l'emoji al dibuix de linia ----
   // Gradient de Sobel sobre color + silueta: capta tambe les vores suaus
   // (antialiasing) que una simple comparacio de veins es deixava, i aixi el
-  // cubell no s'escapa entre zones. Despres s'engruixeix 1px i s'esborren
+  // dibuix quedi net. Despres s'engruixeix 1px i s'esborren
   // les taques petites (punts solts que fa el propi emoji).
   function dibuixaLinies() {
     const off = document.createElement('canvas'); off.width = off.height = S;
@@ -872,7 +905,7 @@ def coloreja_component(emoji, nom, nonce):
       const a = d[i*4+3] / 255, w = 255 * (1 - a);
       ch[0][i] = d[i*4] * a + w; ch[1][i] = d[i*4+1] * a + w; ch[2][i] = d[i*4+2] * a + w; ch[3][i] = d[i*4+3];
     }
-    const T = 60, linia = new Uint8Array(S * S);
+    const T = 45, linia = new Uint8Array(S * S);
     for (let y = 1; y < S - 1; y++) for (let x = 1; x < S - 1; x++) {
       const i = y * S + x; let mag = 0;
       for (let c = 0; c < 4; c++) { const v = ch[c];
@@ -881,7 +914,7 @@ def coloreja_component(emoji, nom, nonce):
         mag += Math.sqrt(gx*gx + gy*gy) * (c === 3 ? 2 : 1); }
       if (mag > T * 4) linia[i] = 1;
     }
-    mask = new Uint8Array(S * S);
+    const mask = new Uint8Array(S * S);
     for (let y = 1; y < S - 1; y++) for (let x = 1; x < S - 1; x++) {
       const i = y * S + x;
       if (linia[i] || linia[i-1] || linia[i+1] || linia[i-S] || linia[i+S]) mask[i] = 1;
@@ -904,26 +937,6 @@ def coloreja_component(emoji, nom, nonce):
     lctx.putImageData(img, 0, 0);
     return true;
   }
-  function hex2rgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
-  function omple(x0, y0) {
-    if (mask && mask[y0 * S + x0]) return;
-    guarda();
-    const img = pctx.getImageData(0, 0, S, S), p = img.data, [R, G, B] = hex2rgb(color);
-    const i0 = (y0 * S + x0) * 4, tr = p[i0], tg = p[i0+1], tb = p[i0+2];
-    if (tr === R && tg === G && tb === B) return;
-    const vist = new Uint8Array(S * S), pila = [y0 * S + x0];
-    while (pila.length) {
-      const i = pila.pop();
-      if (vist[i] || (mask && mask[i])) continue;
-      const k = i * 4;
-      if (Math.abs(p[k] - tr) + Math.abs(p[k+1] - tg) + Math.abs(p[k+2] - tb) > 60) continue;
-      vist[i] = 1; p[k] = R; p[k+1] = G; p[k+2] = B; p[k+3] = 255;
-      const x = i % S;
-      if (x > 0) pila.push(i - 1); if (x < S - 1) pila.push(i + 1);
-      if (i >= S) pila.push(i - S); if (i < S * (S - 1)) pila.push(i + S);
-    }
-    pctx.putImageData(img, 0, 0);
-  }
   function pos(e) {
     const r = pintura.getBoundingClientRect();
     return {x: Math.floor((e.clientX - r.left) * S / r.width), y: Math.floor((e.clientY - r.top) * S / r.height)};
@@ -932,9 +945,8 @@ def coloreja_component(emoji, nom, nonce):
   zona.addEventListener('pointerdown', e => {
     e.preventDefault(); const p = pos(e);
     if (p.x < 0 || p.y < 0 || p.x >= S || p.y >= S) return;
-    if (mode === 'cubell') { omple(p.x, p.y); return; }
     guarda(); pintant = true; zona.setPointerCapture(e.pointerId); ultim = p;
-    pctx.strokeStyle = color; pctx.lineWidth = S / 28; pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+    pctx.strokeStyle = color; pctx.lineWidth = GRUIXOS[ig]; pctx.lineCap = 'round'; pctx.lineJoin = 'round';
     pctx.beginPath(); pctx.moveTo(p.x, p.y); pctx.lineTo(p.x + 0.1, p.y); pctx.stroke();
   });
   zona.addEventListener('pointermove', e => {
@@ -952,7 +964,27 @@ def coloreja_component(emoji, nom, nonce):
   pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, S, S);
   window.addEventListener('resize', mida);
   mida();
+  function dibuixaImatge() {
+    // dibuix propi (PNG de linia): el que sigui fosc es linia, la resta transparent
+    const im = new Image();
+    im.onload = () => {
+      const esc = Math.min((S - 40) / im.width, (S - 40) / im.height);
+      lctx.imageSmoothingEnabled = true; lctx.imageSmoothingQuality = 'high';
+      const w = im.width * esc, h = im.height * esc;
+      lctx.clearRect(0, 0, S, S);
+      lctx.drawImage(im, (S - w) / 2, (S - h) / 2, w, h);
+      const img = lctx.getImageData(0, 0, S, S), p = img.data;
+      for (let i = 0; i < p.length; i += 4) {
+        const fosc = p[i+3] > 80 && (p[i] + p[i+1] + p[i+2]) < 360;
+        p[i] = p[i+1] = p[i+2] = 34; p[i+3] = fosc ? 255 : 0;
+      }
+      lctx.putImageData(img, 0, 0); teLinies = true;
+    };
+    im.onerror = () => { avis.textContent = "No s'ha pogut carregar el dibuix: pinta lliurement! 🖌️"; };
+    im.src = EMOJI;
+  }
   function inicia() {
+    if (EMOJI.startsWith('data:image')) { dibuixaImatge(); return; }
     teLinies = dibuixaLinies();
     if (!teLinies) avis.textContent = 'Aquest dispositiu no pot dibuixar-lo: pinta lliurement! 🖌️';
   }
@@ -1728,10 +1760,10 @@ else:
             st.button("🔁 NOVA PARTIDA", key="memory_nova", use_container_width=True, on_click=new_problem)
         elif ss.current_block == "Colors":
             emoji, nom = DIBUIXOS[ss.dibuix_idx]
-            st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Tria un color de la paleta. "
-                        "Amb 🪣 OMPLE toques una zona i s'omple; amb 🖌️ PINTA pintes lliurement.</p>",
+            st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Tria un color de la paleta i "
+                        "pinta amb el dit o el ratolí. Amb ✏️ GRUIX canvies la mida del pinzell.</p>",
                         unsafe_allow_html=True)
-            coloreja_component(emoji, nom, f"dib-{ss.dibuix_idx}")
+            coloreja_component(dibuix_font(emoji), nom, f"dib-{ss.dibuix_idx}")
         else:
             body = ss.problem_html or ss.problem_text
             mida = "" if ss.problem_html or len(ss.problem_text) <= 22 else (

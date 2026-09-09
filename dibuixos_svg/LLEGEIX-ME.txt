@@ -1,0 +1,3 @@
+Dibuixos de linia d'OpenMoji (https://openmoji.org), llicencia CC BY-SA 4.0.
+Fitxer = codi hex de l'emoji (1F436.svg = gos). Descarregats de
+https://cdn.jsdelivr.net/npm/openmoji@15.0.0/black/svg/<hex>.svg
