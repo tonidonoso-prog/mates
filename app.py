@@ -16,6 +16,7 @@ BLOCKS = [
     ("✏️", "LLETRES I NÚMEROS", "Lletres", "Resseguir lletres i números amb el dit"),
     ("🔍", "SOPA DE LLETRES", "Sopa", "Troba les paraules amagades"),
     ("🧠", "MEMORY", "Memory", "Gira les cartes i troba les parelles"),
+    ("🔠", "PENJAT", "Penjat", "Endevina la paraula lletra a lletra"),
     ("🎨", "COLOREJA", "Colors", "Pinta més de 100 dibuixos amb la paleta"),
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
@@ -336,8 +337,71 @@ def dibuix_font(emoji):
 SOPA_FARCIT = "AAAAAEEEEEIIIOOOOUURRRSSSTTTLLLNNNMMCCDDPPBGVFXJZH"
 
 
+# ---- Penjat: paraules en catala amb la seva pista. El nivell el marca la llargada
+# (Facil 3-5 lletres, Normal 6-8, Dificil 9 o mes). Els accents no compten: la A
+# del teclat destapa A i A amb accent; la C-trencada te tecla propia.
+PENJAT_PARAULES = {
+    "ANIMAL": ["GAT", "GOS", "LLOP", "PORC", "VACA", "RATA", "MICO", "ÀNEC", "LLEÓ", "DOFÍ",
+               "PEIX", "GALL", "ZEBRA", "TIGRE", "OVELLA", "CAVALL", "CONILL", "GIRAFA",
+               "BALENA", "POLLET", "CARGOL", "ABELLA", "GRANOTA", "TORTUGA", "FORMIGA",
+               "ELEFANT", "ESQUIROL", "PINGÜÍ", "CANGUR", "COCODRIL", "PAPALLONA",
+               "HIPOPÒTAM", "RINOCERONT", "DINOSAURE", "CAMALEÓ", "ESCARABAT", "RATPENAT",
+               "GUINEU", "MARIETA",
+               "SARGANTANA", "ORANGUTAN", "ROSSINYOL", "TARÀNTULA", "ORNITORRINC", "LLANGARDAIX"],
+    "MENJAR": ["POMA", "PERA", "MEL", "LLET", "SOPA", "PASTÍS", "GALETA", "TARONJA", "MADUIXA",
+               "PLÀTAN", "LLIMONA", "CIRERA", "XOCOLATA", "ESPAGUETIS", "MACARRONS",
+               "CROQUETA", "ENTREPÀ", "MANDARINA", "SÍNDRIA", "MELÓ", "FORMATGE", "IOGURT",
+               "PIZZA", "TRUITA", "CARBASSA", "PASTANAGA", "ENSALADA", "MAGDALENA", "GELAT",
+               "MACEDÒNIA", "HAMBURGUESA", "MANDONGUILLES", "PANELLETS", "MELMELADA", "NECTARINA"],
+    "COSA DE CASA": ["TAULA", "CADIRA", "LLIT", "PORTA", "SOFÀ", "CUINA", "FINESTRA", "NEVERA",
+                     "DUTXA", "ARMARI", "LÀMPADA", "TOVALLOLA", "RENTADORA", "ESCALA", "COIXÍ",
+                     "MIRALL", "TELEVISIÓ", "ESCOMBRA", "RELLOTGE", "CULLERA", "FORQUILLA",
+                     "DESPERTADOR", "RENTAPLATS", "ASPIRADORA", "PRESTATGERIA", "CALAIXERA", "MICROONES"],
+    "TRANSPORT": ["TREN", "COTXE", "MOTO", "AVIÓ", "VAIXELL", "CAMIÓ", "BICICLETA", "HELICÒPTER",
+                  "AUTOBÚS", "SUBMARÍ", "AMBULÀNCIA", "TRACTOR", "PATINET", "COET", "FURGONETA",
+                  "GLOBUS", "CARAVANA",
+                  "MOTOCICLETA", "FORMIGONERA", "EXCAVADORA", "TELEFÈRIC", "PARACAIGUDES"],
+    "NATURA": ["SOL", "MAR", "RIU", "LLUNA", "ARBRE", "FLOR", "NEU", "PLUJA", "NÚVOL", "ESTRELLA",
+               "MUNTANYA", "PLATJA", "BOSC", "VOLCÀ", "TEMPESTA", "CASCADA", "PLANETA", "GIRASOL",
+               "FULLA", "SORRA", "ROCA", "LLAMP",
+               "TERRATRÈMOL", "MARGARIDA", "PRIMAVERA"],
+    "ESCOLA": ["LLIBRE", "LLAPIS", "GOMA", "ESTOIG", "MOTXILLA", "PISSARRA", "PAPERERA", "TISORES",
+               "CALCULADORA", "ORDINADOR", "PUPITRE", "PATI", "LLIBRETA", "REGLE", "RETOLADOR",
+               "BIBLIOTECA", "COMPANYS",
+               "ENCICLOPÈDIA", "DICCIONARI", "MATEMÀTIQUES", "MAQUINETA", "GRAPADORA", "ESBORRADOR"],
+    "COS": ["NAS", "ULL", "DIT", "BOCA", "CAP", "ORELLA", "GENOLL", "ESQUENA", "CABELL", "DENTS",
+            "COLZE", "MELIC", "PANXA", "TURMELL", "ESPATLLA", "CELLES",
+            "PESTANYES", "COSTELLES", "CERVELL", "ESQUELET"],
+}
+# errors = vides; pista = es mostra la categoria; destapa = lletres que es veuen d'entrada
+PENJAT_CFG = {
+    "Fàcil":   {"llarg": (3, 5),  "errors": 8, "pista": True,  "destapa": "primera", "bonus": 2},
+    "Normal":  {"llarg": (6, 8),  "errors": 7, "pista": True,  "destapa": "",        "bonus": 3},
+    "Difícil": {"llarg": (9, 20), "errors": 6, "pista": False, "destapa": "",        "bonus": 5},
+}
+PENJAT_ACCENTS = str.maketrans("ÀÈÉÍÏÒÓÚÜ", "AEEIIOOUU")
+
+
+def penjat_base(ch):
+    """Lletra del teclat que destapa aquest caracter (À -> A, Ç -> Ç)."""
+    return ch.translate(PENJAT_ACCENTS)
+
+
+def genera_penjat(diff, evita=()):
+    cfg = PENJAT_CFG[diff]
+    lo, hi = cfg["llarg"]
+    pool = sorted({(w, cat) for cat, ws in PENJAT_PARAULES.items() for w in ws
+                   if lo <= len(w) <= hi and w not in evita})
+    if not pool:          # tot vist: tornem a comencar
+        return genera_penjat(diff)
+    w, cat = random.choice(pool)
+    visibles = sorted({penjat_base(w[0])}) if cfg["destapa"] == "primera" else []
+    return {"paraula": w, "cat": cat, "level": diff, "errors": cfg["errors"],
+            "pista": cfg["pista"], "visibles": visibles}
+
+
 # Carrera de lectura: (segons de base, segons per lletra) que es consideren "bon ritme"
-LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.0, 0.33), "Difícil": (1.0, 0.30)}
+LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.5, 0.52), "Difícil": (1.5, 0.47)}
 
 
 def local_css():
@@ -393,6 +457,7 @@ def local_css():
       div.stButton > button, div[data-testid="stFormSubmitButton"] > button {
         min-height: 52px !important; font-size: 1.02rem !important; }
       .st-key-homeblocks div.stButton > button { font-size: 0.9rem !important; min-height: 58px !important; }
+      .st-key-homeblocks div[data-testid="stColumn"] { flex: 1 1 calc(33% - 6px) !important; min-width: calc(33% - 6px) !important; }
       .st-key-controlbar div[data-testid="stColumn"] { flex: 1 1 0 !important; min-width: 0 !important; }
       /* Coloreja: la columna de "SORPRESA" necessita mes ample que les d'icona */
       .st-key-controlbar div[data-testid="stColumn"]:has(.st-key-ctl_dib_rand) { flex: 2.6 1 0 !important; }
@@ -448,6 +513,8 @@ def local_css():
     /* boto invisible que la sopa de lletres clica sola quan s'han trobat totes les paraules */
     .st-key-sopa_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-sopa_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
+    .st-key-penjat_guanya, .st-key-penjat_perd { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
+    .st-key-penjat_guanya button, .st-key-penjat_perd button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
     .st-key-memory_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-memory_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
     #MainMenu, footer, header {visibility: hidden;}
@@ -736,6 +803,134 @@ def sopa_component(sopa, nonce):
         .replace("__N__", str(n))
         .replace("__NONCE__", nonce))
     components.html(html, height={8: 520, 10: 610, 13: 740}.get(n, 60 * n))
+
+
+def penjat_component(pj, nonce):
+    """Joc del penjat: teclat en pantalla (i el del PC), dibuix que es completa amb
+    cada error. En guanyar o perdre, clica el boto invisible corresponent."""
+    html = ("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Andika:wght@700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Andika','Trebuchet MS',sans-serif; background:transparent;
+         user-select:none; -webkit-user-select:none; }
+  #wrap { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:720px; margin:0 auto; }
+  #dalt { display:flex; align-items:center; justify-content:center; gap:14px; width:100%; }
+  #dibuix { width:150px; height:150px; flex:none; }
+  #dibuix .part { stroke:#2D3436; stroke-width:6; stroke-linecap:round; fill:none; opacity:0;
+                  transition:opacity .3s; }
+  #dibuix .part.on { opacity:1; }
+  #dibuix .cap.on { stroke:#EE5253; }
+  #info { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+  #pista { background:#FFF4CC; border:2px solid #F7B731; border-radius:12px; padding:3px 10px;
+           font-size:1rem; color:#2D3436; }
+  #vides { font-size:1.3rem; letter-spacing:2px; }
+  #paraula { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:4px 0; }
+  .ll { width:36px; height:46px; border-bottom:5px solid #4B7BEC; display:flex; align-items:flex-end;
+        justify-content:center; font-size:2rem; color:#2D3436; line-height:1; padding-bottom:2px; }
+  .ll.perdut { color:#EE5253; }
+  #teclat { display:grid; grid-template-columns:repeat(9, 1fr); gap:6px; width:100%; }
+  .t { height:46px; border:none; border-radius:12px; font-family:inherit; font-size:1.25rem;
+       color:#fff; background:#4B7BEC; box-shadow:0 4px 0 #2D5BC7; cursor:pointer; padding:0; }
+  .t:active { transform:translateY(3px); box-shadow:none; }
+  .t.be { background:#20BF6B; box-shadow:0 4px 0 #0B7A45; }
+  .t.mal { background:#B2BEC3; box-shadow:none; color:#fff; }
+  .t:disabled { cursor:default; }
+  #msg { font-weight:700; color:#EE5253; text-align:center; min-height:24px; font-size:1.15rem; }
+  @media (max-width:520px) {
+    #dibuix { width:110px; height:110px; }
+    .ll { width:26px; height:36px; font-size:1.45rem; border-bottom-width:4px; }
+    #teclat { gap:4px; }
+    .t { height:40px; font-size:1.05rem; border-radius:9px; }
+    #pista { font-size:0.85rem; }
+  }
+</style>
+<div id="wrap">
+  <div id="dalt">
+    <svg id="dibuix" viewBox="0 0 150 150">
+      <line class="part" x1="15" y1="140" x2="95" y2="140"/>
+      <line class="part" x1="35" y1="140" x2="35" y2="12"/>
+      <line class="part" x1="35" y1="12" x2="105" y2="12"/>
+      <line class="part" x1="105" y1="12" x2="105" y2="32"/>
+      <circle class="part cap" cx="105" cy="46" r="14"/>
+      <line class="part" x1="105" y1="60" x2="105" y2="98"/>
+      <polyline class="part" points="85,78 105,68 125,78"/>
+      <polyline class="part" points="90,126 105,98 120,126"/>
+    </svg>
+    <div id="info"><div id="pista"></div><div id="vides"></div></div>
+  </div>
+  <div id="paraula"></div>
+  <div id="msg"></div>
+  <div id="teclat"></div>
+</div>
+<script>
+  const PARAULA = "__PARAULA__", CAT = "__CAT__", PISTA = __PISTA__, MAXERR = __MAXERR__,
+        INICIALS = __VISIBLES__, NONCE = "__NONCE__";
+  const LLETRES = "ABCÇDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const BASE = {"À":"A","È":"E","É":"E","Í":"I","Ï":"I","Ò":"O","Ó":"O","Ú":"U","Ü":"U"};
+  const base = ch => BASE[ch] || ch;
+  const parts = Array.from(document.querySelectorAll('#dibuix .part'));
+  // amb menys vides, part del dibuix ja surt fet d'entrada
+  const JAFET = parts.length - MAXERR;
+  const provades = new Set(INICIALS); let errors = 0, fi = false;
+  const tecles = {};
+
+  document.getElementById('pista').textContent = PISTA ? ("PISTA: " + CAT) : ("SENSE PISTA · " + PARAULA.length + " LLETRES");
+  LLETRES.forEach(l => {
+    const b = document.createElement('button'); b.className = 't'; b.textContent = l;
+    b.onclick = () => prova(l); document.getElementById('teclat').appendChild(b); tecles[l] = b;
+  });
+  INICIALS.forEach(l => { if (tecles[l]) { tecles[l].disabled = true; tecles[l].classList.add('be'); } });
+
+  function pinta(perdut) {
+    const cont = document.getElementById('paraula'); cont.innerHTML = '';
+    for (const ch of PARAULA) {
+      const d = document.createElement('div'); d.className = 'll';
+      if (provades.has(base(ch))) d.textContent = ch;
+      else if (perdut) { d.textContent = ch; d.classList.add('perdut'); }
+      cont.appendChild(d);
+    }
+    parts.forEach((p, i) => p.classList.toggle('on', i < JAFET + errors));
+    const queden = MAXERR - errors;
+    document.getElementById('vides').textContent = "❤️".repeat(queden) + "🤍".repeat(errors);
+  }
+  function avisa(clau, text) {
+    fi = true; document.getElementById('msg').textContent = text;
+    Object.values(tecles).forEach(b => b.disabled = true);
+    setTimeout(() => {
+      try {
+        const b = window.parent.document.querySelector('.st-key-' + clau + ' button');
+        if (b) { b.click(); return; }
+      } catch (e) {}
+      document.getElementById('msg').textContent = text + " Prem NOVA PARAULA";
+    }, clau === 'penjat_guanya' ? 1100 : 1800);
+  }
+  function prova(l) {
+    if (fi || provades.has(l)) return;
+    provades.add(l);
+    const hi_es = [...PARAULA].some(ch => base(ch) === l);
+    tecles[l].disabled = true; tecles[l].classList.add(hi_es ? 'be' : 'mal');
+    if (!hi_es) errors++;
+    const guanyat = [...PARAULA].every(ch => provades.has(base(ch)));
+    const perdut = !guanyat && errors >= MAXERR;
+    pinta(perdut);
+    if (guanyat) avisa('penjat_guanya', "L'HAS ENDEVINADA! 🎉");
+    else if (perdut) avisa('penjat_perd', "ERA " + PARAULA + ". LA PROPERA SEGUR! 💪");
+  }
+  document.addEventListener('keydown', e => {
+    const l = (e.key || "").toUpperCase();
+    if (LLETRES.includes(l)) prova(l);
+  });
+  pinta(false);
+</script>
+"""
+        .replace("__PARAULA__", pj["paraula"])
+        .replace("__CAT__", pj["cat"])
+        .replace("__PISTA__", "true" if pj["pista"] else "false")
+        .replace("__MAXERR__", str(pj["errors"]))
+        .replace("__VISIBLES__", json.dumps(pj["visibles"], ensure_ascii=False))
+        .replace("__NONCE__", nonce))
+    components.html(html, height=500)
 
 
 def memory_component(mem, nonce):
@@ -1242,6 +1437,12 @@ def new_problem():
         ss.sopa = genera_sopa(diff)
         ss.sopa_n += 1                     # canvia la clau del component: graella nova de zero
         return
+    if block == "Penjat":
+        ss.problem_text = "penjat"
+        ss.penjat = genera_penjat(diff, evita=ss.penjat_vistes)
+        ss.penjat_vistes = (ss.penjat_vistes + [ss.penjat["paraula"]])[-30:]
+        ss.penjat_n += 1
+        return
     if block == "Memory":
         ss.problem_text = "memory"
         ss.memory = genera_memory(diff)
@@ -1298,7 +1499,7 @@ DEFAULTS = {
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
     'base': None, 'nom_actiu': '', 'lletra_idx': 0, 'lletra_set': 'Lletres',
-    'sopa': None, 'sopa_n': 0, 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
+    'sopa': None, 'sopa_n': 0, 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -1350,6 +1551,26 @@ def sopa_completada():
     ss.punts += SOPA_CFG[ss.sopa["level"]]["bonus"]
     register(True)                         # +1 punt, encert, ratxa i classificacio
     ss.last_status = "correct"
+    new_problem()
+
+
+def penjat_guanyat():
+    ss = st.session_state
+    if ss.current_block != "Penjat" or ss.penjat is None:
+        return
+    ss.punts += PENJAT_CFG[ss.penjat["level"]]["bonus"]
+    register(True)
+    ss.last_status = "correct"
+    new_problem()
+
+
+def penjat_perdut():
+    """El component ja ha ensenyat la paraula en vermell: nomes comptem l'error
+    i passem a la seguent, sense cartell (el Toni no en vol durant el joc)."""
+    ss = st.session_state
+    if ss.current_block != "Penjat" or ss.penjat is None:
+        return
+    register(False)
     new_problem()
 
 
@@ -1497,8 +1718,9 @@ if st.session_state.current_block == "Home":
     # sempre. Abans anaven totes en una fila a part i es descolocaven en
     # arribar al final de linia. Vuit blocs: dues files de quatre.
     with st.container(key="homeblocks"):
-        for fila in (BLOCKS[:4], BLOCKS[4:]):
-            cols = st.columns(4)
+        for i in range(0, len(BLOCKS), 3):
+            fila = BLOCKS[i:i + 3]
+            cols = st.columns(3)
             for col, (icon, label, block, desc) in zip(cols, fila):
                 col.button(f"{icon} {label}", key=f"home_{block}", use_container_width=True,
                            on_click=start_block, args=(block,))
@@ -1688,6 +1910,9 @@ else:
         elif ss.current_block == "Sopa":
             st.markdown(f"<h3>SOPA DE LLETRES • {ss.diff.upper()} • TROBA {len(ss.sopa['words'])} PARAULES</h3>",
                         unsafe_allow_html=True)
+        elif ss.current_block == "Penjat":
+            st.markdown(f"<h3>PENJAT • {ss.diff.upper()} • {ss.penjat['errors']} VIDES</h3>",
+                        unsafe_allow_html=True)
         elif ss.current_block == "Memory":
             st.markdown(f"<h3>MEMORY • {ss.diff.upper()} • {ss.memory['tema'].upper()} • "
                         f"{len(ss.memory['cards']) // 2} PARELLES</h3>", unsafe_allow_html=True)
@@ -1764,6 +1989,13 @@ else:
             # El clica sol el component quan s'han trobat totes (CSS: invisible)
             st.button("fet", key="sopa_done", on_click=sopa_completada)
             st.button("🔁 NOVA SOPA", key="sopa_nova", use_container_width=True, on_click=new_problem)
+        elif ss.current_block == "Penjat":
+            st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Toca les lletres per endevinar "
+                        "la paraula abans que es completi el dibuix.</p>", unsafe_allow_html=True)
+            penjat_component(ss.penjat, f"{ss.diff}-{ss.penjat_n}")
+            st.button("guanya", key="penjat_guanya", on_click=penjat_guanyat)
+            st.button("perd", key="penjat_perd", on_click=penjat_perdut)
+            st.button("🔁 NOVA PARAULA", key="penjat_nova", use_container_width=True, on_click=new_problem)
         elif ss.current_block == "Memory":
             st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Toca dues cartes. "
                         "Si són iguals, es queden girades. Troba totes les parelles!</p>",
