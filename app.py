@@ -11,7 +11,7 @@ st.set_page_config(page_title="Aventura Matemàtica", page_icon="🧮", layout="
 
 BLOCKS = [
     ("🧮", "MATES", "Mates", "Sumes, restes i taules"),
-    ("💡", "INNOVAMAT", "Innovamat", "Amics, dobles, sèries i piràmides"),
+    ("💡", "CÀLCUL MENTAL", "Calcul", "Amics, dobles, sèries i piràmides"),
     ("📖", "LECTURA", "Lectura", "Carrera de lectura"),
     ("✏️", "LLETRES I NÚMEROS", "Lletres", "Resseguir lletres i números amb el dit"),
     ("🔍", "SOPA DE LLETRES", "Sopa", "Troba les paraules amagades"),
@@ -21,6 +21,8 @@ BLOCKS = [
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
 SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
+# nom que es veu a la capcalera (la clau interna es curta: Calcul, Sopa...)
+NOM_BLOC = {block: label for _, label, block, _ in BLOCKS}
 
 # ---- Caligrafia: l'abecedari catala amb una paraula d'exemple per a cada lletra ----
 # (glif, paraula d'exemple, dibuix, com es diu la lletra en veu alta)
@@ -46,18 +48,18 @@ NUMEROS = [
 ]
 DIFFS = [("Fàcil", "facil"), ("Normal", "normal"), ("Difícil", "dificil")]
 OPS = [("SUMA", "Sumes", "suma"), ("RESTA", "Restes", "resta"), ("MULT", "Multiplicació", "mult")]
-INNO_KINDS = [("TOTS", "Tots"), ("AMICS", "Amics"), ("DESCOMPON", "Descompon"),
+CALCUL_KINDS = [("TOTS", "Tots"), ("AMICS", "Amics"), ("DESCOMPON", "Descompon"),
               ("DOBLES", "Dobles"), ("MEITATS", "Meitats"), ("SÈRIES", "Sèries"),
               ("PIRÀMIDE", "Piràmide"), ("REPARTIR", "Repartir"), ("DESENES", "Desenes"),
               ("QUÈ FALTA", "Inversa"), ("SUMA DE 3", "Suma3"), ("PROBLEMES", "Problema")]
-INNO_ALL = [k for _, k in INNO_KINDS if k != "Tots"]
+CALCUL_ALL = [k for _, k in CALCUL_KINDS if k != "Tots"]
 
 
 def slugify(txt):
     """Clau CSS segura a partir d'un nom amb accents.
 
     Es diu slugify i no slug perque els bucles de DIFFS i OPS fan servir una
-    variable 'slug', i abans tapaven la funcio -> TypeError a Innovamat."""
+    variable 'slug', i abans tapaven la funcio -> TypeError al bloc de calcul."""
     return "".join(c if c.isalnum() else "_" for c in
                    txt.lower().replace("è", "e").replace("é", "e").replace("à", "a")
                       .replace("í", "i").replace("ó", "o").replace("ú", "u"))
@@ -1246,11 +1248,11 @@ def make_math(diff, op):
         a, b = _pick(lambda: (R(6, 12), R(11, 30)), lambda c: c[1] % 10 != 0)
     return f"{a} x {b}", a * b
 
-def make_inno(diff, kind="Tots"):
+def make_calcul(diff, kind="Tots"):
     """Retorna (text, resposta, html_opcional)."""
     R = random.randint
     if kind == "Tots":
-        kind = random.choice(INNO_ALL)
+        kind = random.choice(CALCUL_ALL)
     if kind == "Amics":
         if diff == "Fàcil":
             target = random.choice([10, 20]); a = R(1, target - 1)
@@ -1465,15 +1467,15 @@ def new_problem():
         ss.problem_text, ss.correct_answer = text, ans
         _remember(text)
         return
-    if block == "Innovamat":
+    if block == "Calcul":
         for _ in range(40):
-            text, ans, html = make_inno(diff, ss.inno_kind)
+            text, ans, html = make_calcul(diff, ss.calcul_kind)
             key = html or text          # la piramide sempre te el mateix text
             if key not in ss.recent: break
         ss.problem_text, ss.correct_answer, ss.problem_html = text, ans, html
         _remember(html or text)
         return
-    # Repte: barreja mates + innovamat, sempre al nivell que ha triat el nen
+    # Repte: barreja mates + calcul mental, sempre al nivell que ha triat el nen
     d = ss.diff
     if random.random() < 0.5:
         for _ in range(40):
@@ -1482,16 +1484,16 @@ def new_problem():
         ss.problem_text, ss.correct_answer, ss.kind_label = text, ans, "Càlcul"
         _remember(text)
     else:
-        k = random.choice(INNO_ALL)
+        k = random.choice(CALCUL_ALL)
         for _ in range(40):
-            text, ans, html = make_inno(d, k)
+            text, ans, html = make_calcul(d, k)
             if (html or text) not in ss.recent: break
         ss.problem_text, ss.correct_answer, ss.problem_html, ss.kind_label = text, ans, html, k
         _remember(html or text)
 
 # ------------------------------------------------------------------ STATE
 DEFAULTS = {
-    'current_block': "Home", 'nom': "", 'diff': "Fàcil", 'mode': "Sumes", 'inno_kind': "Tots",
+    'current_block': "Home", 'nom': "", 'diff': "Fàcil", 'mode': "Sumes", 'calcul_kind': "Tots",
     'reading_pos': 0, 'rival_pos': 0, 'reading_word': "", 'word_start_time': time.time(),
     'words_pool': [], 'problem_text': "", 'problem_html': None, 'correct_answer': 0,
     'input_key': 0, 'last_status': None, 'reveal': None, 'attempts': 0, 'ratxa': 0,
@@ -1611,8 +1613,8 @@ def reset_lectura():
     ss.words_pool = []          # barreja de nou tot el vocabulari del nivell
     new_problem()
 
-def set_inno_kind(k):
-    st.session_state.inno_kind = k; new_problem()
+def set_calcul_kind(k):
+    st.session_state.calcul_kind = k; new_problem()
 
 def sync_ranking():
     """Puja el total (el que ja tenia + el d'aquesta sessio) a la classificacio."""
@@ -1829,8 +1831,8 @@ else:
     if ss.current_block == "Mates":
         op_slug = {m: s for _, m, s in OPS}[ss.mode]
         active += [f"ctl_op_{op_slug}", f"sb_op_{op_slug}"]
-    if ss.current_block == "Innovamat":
-        active.append("sb_kind_" + slugify(ss.inno_kind))
+    if ss.current_block == "Calcul":
+        active.append("sb_kind_" + slugify(ss.calcul_kind))
     if ss.current_block == "Lletres":
         active = ["ctl_set_lletres"] if ss.lletra_set == "Lletres" else ["ctl_set_numeros"]
     if ss.current_block == "Colors":
@@ -1888,11 +1890,11 @@ else:
                 if st.button(label, key=f"sb_op_{slug}", use_container_width=True):
                     set_mode(mode); safe_rerun()
             st.markdown("---")
-        if ss.current_block == "Innovamat":
-            for label, kind in INNO_KINDS:
+        if ss.current_block == "Calcul":
+            for label, kind in CALCUL_KINDS:
                 key = "sb_kind_" + slugify(kind)
                 if st.button(label, key=key, use_container_width=True):
-                    set_inno_kind(kind); safe_rerun()
+                    set_calcul_kind(kind); safe_rerun()
             st.markdown("---")
         if ss.current_block not in SENSE_NIVELL:
             for label, slug in DIFFS:
@@ -1921,8 +1923,9 @@ else:
             st.markdown(f"<h3>COLOREJA • DIBUIX {ss.dibuix_idx + 1} DE {len(DIBUIXOS)} • {nom}</h3>",
                         unsafe_allow_html=True)
         else:
-            extra = f" • {ss.inno_kind.upper()}" if ss.current_block == "Innovamat" else ""
-            st.markdown(f"<h3>{ss.current_block.upper()} • {ss.diff.upper()}{extra}</h3>", unsafe_allow_html=True)
+            extra = f" • {ss.calcul_kind.upper()}" if ss.current_block == "Calcul" else ""
+            nom = NOM_BLOC.get(ss.current_block, ss.current_block).upper()
+            st.markdown(f"<h3>{nom} • {ss.diff.upper()}{extra}</h3>", unsafe_allow_html=True)
 
         if ss.current_block == "Lectura":
             st.markdown(f"<div class='race-track'><div class='car' style='left:{ss.reading_pos}%;'>🏎️</div></div>", unsafe_allow_html=True)

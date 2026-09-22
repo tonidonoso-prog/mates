@@ -8,7 +8,7 @@ Aquest document resumeix les millores i l'estat actual de l'aplicació.
 - **Vocabulari**: Pool de paraules sense repeticions. No es repeteix cap paraula fins que s'ha llegit tot el diccionari del nivell.
 - **Visual**: Requadres de paraules centrats i grans per facilitar la lectura.
 
-## 💡 INNOVAMAT I MATES
+## 💡 CÀLCUL MENTAL I MATES
 - **Disseny**: Requadre de pregunta i resposta **idèntics** (140px d'alçada, font Bungee 3.5rem).
 - **Contingut**: Eliminades les divisions i conceptes de "meitats" del nivell Fàcil per simplificar la pedagogia.
 - **Responsive**: Controls de mòbil gegants (Inici i Nivells) amagats automàticament al PC per deixar la interfície neta.
