@@ -1,3 +1,5 @@
+import hashlib
+import urllib.request
 import streamlit as st
 import streamlit.components.v1 as components
 import random
@@ -69,66 +71,120 @@ BASE_DIR = Path(__file__).parent
 # La classificacio es publica i hi juguen menors. Per defecte es GUARDA el nom
 # sencer (aixi el mestre sap qui es) pero es MOSTRA abreujat: "Jan D.".
 # Posa-ho a True si vols els cognoms sencers a la pantalla de tothom.
-MOSTRA_NOMS_SENCERS = False
+# El cognom NO es desa mai (22 set 2026, decisio del Toni: "mejor esconder nombres").
+# A la base de dades nomes hi va el nom public ("Jan D.") i una clau calculada.
 
 
 @st.cache_resource
+def _secret(clau):
+    try:
+        return st.secrets.get(clau)
+    except Exception:
+        return None
+
+
+def _api():
+    """(url, clau) del servidor propi (osuhosting) si estan configurats."""
+    url, key = _secret("api_url"), _secret("api_key")
+    return (url, key) if url and key else None
+
+
+def _api_crida(accio, dades=None):
+    cfg = _api()
+    cos = json.dumps({"accio": accio, **(dades or {})}).encode()
+    req = urllib.request.Request(cfg[0], data=cos, headers={
+        "Content-Type": "application/json", "X-Mates-Key": cfg[1]})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        resposta = json.loads(r.read().decode())
+    if not resposta.get("ok"):
+        raise RuntimeError(resposta.get("error", "resposta invalida del servidor"))
+    return resposta
+
+
 def get_engine():
-    """Postgres si hi ha secret 'db_url' (Supabase/Neon), si no SQLite local.
+    """Postgres/MySQL si hi ha secret 'db_url', si no SQLite local.
 
     IMPORTANT: a Streamlit Cloud el disc s'esborra a cada redesplegament, o sigui
-    que SQLite alla nomes serveix per provar. Per a la classe cal el secret.
+    que SQLite alla nomes serveix per provar. Per a la classe cal el secret
+    (o millor, el servidor propi: secrets 'api_url' + 'api_key').
     """
-    url = None
-    try:
-        url = st.secrets.get("db_url")
-    except Exception:
-        url = None
+    url = _secret("db_url")
     fallback = not url
     eng = create_engine(url or f"sqlite:///{BASE_DIR / 'ranking.db'}", pool_pre_ping=True)
     with eng.begin() as c:
         c.execute(text("""
-            CREATE TABLE IF NOT EXISTS ranking (
-                nom TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS classificacio (
+                clau VARCHAR(32) PRIMARY KEY,
+                nom VARCHAR(60),
                 punts INTEGER DEFAULT 0,
                 encerts INTEGER DEFAULT 0,
                 errors INTEGER DEFAULT 0,
                 millor_ratxa INTEGER DEFAULT 0,
                 partides INTEGER DEFAULT 0,
-                actualitzat TEXT
+                actualitzat VARCHAR(32)
             )"""))
     return eng, fallback
 
 
+BUIT = {"punts": 0, "encerts": 0, "errors": 0, "millor_ratxa": 0, "partides": 0, "nom": ""}
+
+
 def db_load(nom):
+    clau = clau_jugador(nom)
+    if not clau:
+        return dict(BUIT)
+    if _api():
+        return {**BUIT, **(_api_crida("jugador", {"clau": clau}).get("jugador") or {})}
     eng, _ = get_engine()
     with eng.begin() as c:
-        r = c.execute(text("SELECT punts, encerts, errors, millor_ratxa, partides"
-                           " FROM ranking WHERE nom = :n"), {"n": nom}).fetchone()
+        r = c.execute(text("SELECT punts, encerts, errors, millor_ratxa, partides, nom"
+                           " FROM classificacio WHERE clau = :c"), {"c": clau}).fetchone()
     if not r:
-        return {"punts": 0, "encerts": 0, "errors": 0, "millor_ratxa": 0, "partides": 0}
-    return {"punts": r[0], "encerts": r[1], "errors": r[2], "millor_ratxa": r[3], "partides": r[4]}
+        return dict(BUIT)
+    return {"punts": r[0], "encerts": r[1], "errors": r[2], "millor_ratxa": r[3],
+            "partides": r[4], "nom": r[5] or ""}
 
 
 def db_save(nom, punts, encerts, errors, millor_ratxa, partides):
-    """Escriu el TOTAL (base d'abans + el d'aquesta sessio). Idempotent."""
+    """Escriu el TOTAL (base d'abans + el d'aquesta sessio). Idempotent.
+
+    Nomes hi viatja el nom public: 'Jan D.', mai el cognom sencer."""
+    clau, public = clau_jugador(nom), nom_public(normalitza_nom(nom))
+    if not clau:
+        return ""
+    dades = {"clau": clau, "nom": public, "punts": punts, "encerts": encerts,
+             "errors": errors, "millor_ratxa": millor_ratxa, "partides": partides}
+    if _api():
+        return _api_crida("desa", dades).get("nom", public)
     eng, _ = get_engine()
+    ara = datetime.datetime.now().isoformat(timespec="seconds")
     with eng.begin() as c:
-        c.execute(text("""
-            INSERT INTO ranking (nom, punts, encerts, errors, millor_ratxa, partides, actualitzat)
-            VALUES (:n, :p, :e, :x, :r, :g, :t)
-            ON CONFLICT (nom) DO UPDATE SET
-                punts = :p, encerts = :e, errors = :x,
-                millor_ratxa = :r, partides = :g, actualitzat = :t"""),
-            {"n": nom, "p": punts, "e": encerts, "x": errors, "r": millor_ratxa,
-             "g": partides, "t": datetime.datetime.now().isoformat(timespec="seconds")})
+        agafats = {n: k for k, n in
+                   c.execute(text("SELECT clau, nom FROM classificacio")).fetchall()}
+        public = nom_lliure(public, clau, agafats)
+        fila = {"c": clau, "n": public, "p": punts, "e": encerts, "x": errors,
+                "r": millor_ratxa, "g": partides, "t": ara}
+        fet = c.execute(text("""
+            UPDATE classificacio SET nom = :n, punts = :p, encerts = :e, errors = :x,
+                   millor_ratxa = :r, partides = :g, actualitzat = :t
+             WHERE clau = :c"""), fila)
+        if not fet.rowcount:      # sense ON CONFLICT: funciona igual a SQLite, Postgres i MySQL
+            c.execute(text("""
+                INSERT INTO classificacio (clau, nom, punts, encerts, errors, millor_ratxa,
+                                           partides, actualitzat)
+                VALUES (:c, :n, :p, :e, :x, :r, :g, :t)"""), fila)
+    return public
 
 
 def db_top(n=20):
+    """[(clau, nom public, punts, encerts, errors, millor ratxa)] ordenat."""
+    if _api():
+        return [(f["clau"], f["nom"], f["punts"], f["encerts"], f["errors"], f["millor_ratxa"])
+                for f in _api_crida("top", {"n": n}).get("top", [])]
     eng, _ = get_engine()
     with eng.begin() as c:
-        return c.execute(text("SELECT nom, punts, encerts, errors, millor_ratxa"
-                              " FROM ranking ORDER BY punts DESC, millor_ratxa DESC"
+        return c.execute(text("SELECT clau, nom, punts, encerts, errors, millor_ratxa"
+                              " FROM classificacio ORDER BY punts DESC, millor_ratxa DESC"
                               " LIMIT :n"), {"n": n}).fetchall()
 
 
@@ -139,10 +195,41 @@ def normalitza_nom(nom):
 
 
 def nom_public(nom):
-    if MOSTRA_NOMS_SENCERS:
-        return nom
+    """'Jan Donoso' -> 'Jan D.'  ·  'Jan D.' -> 'Jan D.'  ·  'Jan' -> 'Jan'.
+
+    Es el UNIC nom que surt del navegador cap a la base de dades: el cognom
+    sencer no es desa enlloc, ni tan sols xifrat."""
     parts = nom.split()
-    return parts[0] + (f" {parts[1][0]}." if len(parts) > 1 else "")
+    if not parts:
+        return ""
+    return parts[0] + (f" {parts[1][0].upper()}." if len(parts) > 1 else "")
+
+
+ACCENTS = str.maketrans("àáèéíïòóúüçÀÁÈÉÍÏÒÓÚÜÇ", "aaeeiioouucAAEEIIOOUUC")
+
+
+def clau_jugador(nom):
+    """Identificador del jugador: sha256 del nom I EL COGNOM, calculat aqui.
+
+    A la base de dades nomes hi va aquest resum, mai el cognom. Es fa servir el
+    cognom SENCER (no la inicial) perque a la classe hi pot haver dos nens que
+    siguin tots dos "Jan D." i no han de compartir fila ni punts (22 set 2026)."""
+    parts = normalitza_nom(nom).translate(ACCENTS).lower().split()[:2]
+    if not parts:
+        return ""
+    return hashlib.sha256(("aventura-matematica|" + " ".join(parts)).encode()).hexdigest()[:16]
+
+
+def nom_lliure(public, clau, agafats):
+    """Si un altre jugador ja es "Jan D.", aquest sortira com a "Jan D. 2".
+
+    agafats: {nom tal com surt a la llista: clau de qui el te}."""
+    if agafats.get(public) in (None, clau):
+        return public
+    n = 2
+    while agafats.get(public + " " + str(n)) not in (None, clau):
+        n += 1
+    return public + " " + str(n)
 
 
 # Nomes dibuixos, animals i nens. Revisats un a un mirant el primer fotograma:
@@ -1500,7 +1587,7 @@ DEFAULTS = {
     'kind_label': "", 'lectura_avis': False,
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
-    'base': None, 'nom_actiu': '', 'lletra_idx': 0, 'lletra_set': 'Lletres',
+    'base': None, 'nom_actiu': '', 'nom_mostrat': '', 'lletra_idx': 0, 'lletra_set': 'Lletres',
     'sopa': None, 'sopa_n': 0, 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
@@ -1624,9 +1711,9 @@ def sync_ranking():
         return
     try:
         b = ss.base
-        db_save(nom, b["punts"] + ss.punts, b["encerts"] + ss.encerts,
-                b["errors"] + ss.errors, max(b["millor_ratxa"], ss.millor_ratxa),
-                b["partides"] + ss.partides)
+        ss.nom_mostrat = db_save(nom, b["punts"] + ss.punts, b["encerts"] + ss.encerts,
+                                 b["errors"] + ss.errors, max(b["millor_ratxa"], ss.millor_ratxa),
+                                 b["partides"] + ss.partides) or ss.nom_mostrat
     except Exception as e:
         ss.db_error = str(e)
 
@@ -1652,6 +1739,7 @@ def carrega_base():
         return
     try:
         ss.base = db_load(nom)
+        ss.nom_mostrat = ss.base.get("nom") or nom_public(normalitza_nom(nom))
         ss.db_error = ""
     except Exception as e:
         ss.base = None
@@ -1740,16 +1828,19 @@ if st.session_state.current_block == "Home":
     st.markdown("<br>", unsafe_allow_html=True)
     if "nom_input" not in st.session_state:
         st.session_state.nom_input = st.session_state.nom
-    st.text_input("Nom i cognom (per sortir a la classificació)", key="nom_input", max_chars=40,
-                  placeholder="Ex: Jan Donoso", on_change=on_nom_change)
+    st.text_input("Nom i cognom (per sortir a la classificació)", key="nom_input",
+                  max_chars=40, placeholder="Ex: Jan Donoso", on_change=on_nom_change)
     st.session_state.nom = normalitza_nom(st.session_state.nom_input)
     carrega_base()
     if st.session_state.nom.strip() and st.session_state.base:
         b = st.session_state.base
+        mostrat = st.session_state.nom_mostrat or nom_public(normalitza_nom(st.session_state.nom))
         st.caption(f"Benvingut/da de nou! Tens {b['punts']} punts acumulats. "
-                   "A la classificació surts com a **" + nom_public(st.session_state.nom.strip()) + "**.")
+                   f"A la classificació surts com a **{mostrat}**. "
+                   "El cognom no es desa enlloc: només serveix per reconèixer-te.")
     elif not st.session_state.nom.strip():
-        st.caption("Sense nom pots jugar igual, però no sortiràs a la classificació.")
+        st.caption("Sense nom pots jugar igual, però no sortiràs a la classificació. "
+                   "A la llista només hi surt el nom i la inicial: **Jan D.**")
     if st.session_state.db_error:
         st.warning("No s'ha pogut desar la puntuació: " + st.session_state.db_error)
 
@@ -1760,38 +1851,40 @@ elif st.session_state.current_block == "Ranking":
         st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B;'>🏆 CLASSIFICACIÓ</h2>", unsafe_allow_html=True)
         try:
             files = db_top(20)
-            _, sense_db = get_engine()
+            sense_db = (not _api()) and get_engine()[1]
         except Exception as e:
             files, sense_db = [], False
             st.error("No s'ha pogut llegir la classificació: " + str(e))
-        jo = ss.nom.strip()
+        jo = clau_jugador(ss.nom)
         if not files:
             st.markdown("<p>Encara no hi ha ningú. Sigues el primer! 🚀</p>", unsafe_allow_html=True)
         else:
             medalles = {1: "🥇", 2: "🥈", 3: "🥉"}
             html = ["<div style='display:flex; flex-direction:column; gap:6px;'>"]
-            for i, (nom, punts, enc, err, ratxa) in enumerate(files, 1):
+            for i, (clau, nom, punts, enc, err, ratxa) in enumerate(files, 1):
                 tot = enc + err
                 pct = round(100 * enc / tot) if tot else 0
-                meu = (nom == jo)
+                meu = (clau == jo)
                 fons = "#FFF4CC" if meu else "white"
                 vora = "3px solid #F7B731" if meu else "1px solid #EEE"
                 html.append(
                     f"<div class='rank-row' style='display:flex; align-items:center; gap:12px; background:{fons};"
                     f" border:{vora}; border-radius:14px; padding:8px 14px;'>"
                     f"<div style=\"font-family:Bungee; width:46px;\">{medalles.get(i, str(i) + '.')}</div>"
-                    f"<div style='flex:1; font-weight:700;'>{nom_public(nom)}</div>"
+                    f"<div style='flex:1; font-weight:700;'>{nom}</div>"
                     f"<div style='font-family:Bungee; color:#EE5253;'>⭐ {punts}</div>"
                     f"<div class='rank-pct' style='width:70px; text-align:right;'>✅ {pct}%</div>"
                     f"<div style='width:60px; text-align:right;'>🔥 {ratxa}</div></div>")
             html.append("</div>")
             st.markdown("".join(html), unsafe_allow_html=True)
-            if jo and not any(n == jo for n, *_ in files):
+            if jo and not any(c == jo for c, *_ in files):
+                mostrat = ss.nom_mostrat or nom_public(normalitza_nom(ss.nom))
                 st.markdown(f"<p style='margin-top:10px;'>Encara no ets al top 20, "
-                            f"<b>{nom_public(jo)}</b>. A jugar! 💪</p>", unsafe_allow_html=True)
+                            f"<b>{mostrat}</b>. A jugar! 💪</p>", unsafe_allow_html=True)
         if sense_db:
             st.caption("⚠️ Sense base de dades configurada: la classificació es guarda en local i "
-                       "es perdrà en cada redesplegament. Cal el secret `db_url`.")
+                       "es perdrà en cada redesplegament. Calen els secrets `api_url` i `api_key` "
+                       "(servidor propi) o `db_url`.")
         st.markdown("<br>", unsafe_allow_html=True)
         st.button("🏠 INICI", key="rank_home", use_container_width=True,
                   on_click=lambda: st.session_state.update(current_block="Home"))
@@ -1879,7 +1972,7 @@ else:
 
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
-        who = ss.nom.strip() or "Jugador/a"
+        who = ss.nom_mostrat or nom_public(normalitza_nom(ss.nom)) or "Jugador/a"
         st.markdown(f"<div class='chip'>👦 {who} · ⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
         st.markdown("---")
         if st.button("🏠 INICI", key="sb_home", use_container_width=True):
