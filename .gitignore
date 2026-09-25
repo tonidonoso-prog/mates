@@ -10,3 +10,4 @@ env/
 players.json
 ranking.db
 venv/
+progres.db

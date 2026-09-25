@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Puja la classificacio a osuhosting.com/panel/<carpeta>/ (mateix patro que el
+"""Puja el servidor de progres (calendari i medalles) a osuhosting.com/panel/<carpeta>/ (mateix patro que el
 webhook de Fanvue: carpeta propia amb .htaccess que obre nomes aquesta ruta).
 
   python3 servidor/puja.py            # puja classificacio.php + .htaccess + cfg.php
@@ -24,12 +24,13 @@ import ftp_util  # noqa: E402
 CARPETA = "/mates-8f2c1d64b0a7"
 URL = "https://osuhosting.com/panel" + CARPETA + "/classificacio.php"
 SEC = os.path.expanduser("~/.claude/secrets/mates_api.json")
-# /panel te Basic auth; aquesta carpeta s'obre nomes per a l'app, i el JSON de
-# dades queda tancat (ningu el pot descarregar des del navegador).
+# /panel te Basic auth; aquesta carpeta s'obre nomes per a l'app, i qualsevol JSON
+# de dades (progres.json) i el cfg.php queden tancats: no es poden baixar.
+# El .php es diu classificacio.php per no canviar la URL dels Secrets de Streamlit.
 HTACCESS = (
     "Satisfy Any\nAllow from all\n"
     "<IfModule mod_authz_core.c>\n  Require all granted\n</IfModule>\n"
-    '<Files "classificacio.json">\n  Require all denied\n  Deny from all\n</Files>\n'
+    '<FilesMatch "\\.json$">\n  Require all denied\n  Deny from all\n</FilesMatch>\n'
     '<Files "cfg.php">\n  Require all denied\n  Deny from all\n</Files>\n'
     "Options -Indexes\n"
 )
@@ -72,7 +73,8 @@ def main():
                 "Content-Type": "application/json", "X-Mates-Key": k})
             with urllib.request.urlopen(req, timeout=15) as r:
                 return json.loads(r.read().decode())
-        print("prova top:", crida({"accio": "top", "n": 5}))
+        # una clau que no pot ser de cap nen (els resums reals son de 16 caracters)
+        print("prova:", crida({"accio": "jugador", "clau": "00000000"}))
 
 
 if __name__ == "__main__":

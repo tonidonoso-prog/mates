@@ -6,6 +6,7 @@ import random
 import time
 import json
 import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from sqlalchemy import create_engine, text
 
@@ -68,11 +69,9 @@ def slugify(txt):
 REPTE_LEN = 10  # exercicis per sessio
 BASE_DIR = Path(__file__).parent
 
-# La classificacio es publica i hi juguen menors. Per defecte es GUARDA el nom
-# sencer (aixi el mestre sap qui es) pero es MOSTRA abreujat: "Jan D.".
-# Posa-ho a True si vols els cognoms sencers a la pantalla de tothom.
-# El cognom NO es desa mai (22 set 2026, decisio del Toni: "mejor esconder nombres").
-# A la base de dades nomes hi va el nom public ("Jan D.") i una clau calculada.
+# Noms: hi juguen menors. Cap nom es desa enlloc (22 i 25 set 2026, decisions del Toni:
+# "mejor esconder nombres" i fora la classificacio, "no quiero competicion"). A la base
+# de dades nomes hi va una clau calculada a partir del nom i el cognom.
 
 
 @st.cache_resource
@@ -105,17 +104,16 @@ def get_engine():
     """Postgres/MySQL si hi ha secret 'db_url', si no SQLite local.
 
     IMPORTANT: a Streamlit Cloud el disc s'esborra a cada redesplegament, o sigui
-    que SQLite alla nomes serveix per provar. Per a la classe cal el secret
-    (o millor, el servidor propi: secrets 'api_url' + 'api_key').
+    que SQLite alla nomes serveix per provar. De debo es fa servir el servidor
+    propi (secrets 'api_url' + 'api_key').
     """
     url = _secret("db_url")
     fallback = not url
-    eng = create_engine(url or f"sqlite:///{BASE_DIR / 'ranking.db'}", pool_pre_ping=True)
+    eng = create_engine(url or f"sqlite:///{BASE_DIR / 'progres.db'}", pool_pre_ping=True)
     with eng.begin() as c:
         c.execute(text("""
-            CREATE TABLE IF NOT EXISTS classificacio (
+            CREATE TABLE IF NOT EXISTS progres (
                 clau VARCHAR(32) PRIMARY KEY,
-                nom VARCHAR(60),
                 punts INTEGER DEFAULT 0,
                 encerts INTEGER DEFAULT 0,
                 errors INTEGER DEFAULT 0,
@@ -123,13 +121,20 @@ def get_engine():
                 partides INTEGER DEFAULT 0,
                 actualitzat VARCHAR(32)
             )"""))
+        c.execute(text("""
+            CREATE TABLE IF NOT EXISTS dies (
+                clau VARCHAR(32),
+                dia VARCHAR(10),
+                PRIMARY KEY (clau, dia)
+            )"""))
     return eng, fallback
 
 
-BUIT = {"punts": 0, "encerts": 0, "errors": 0, "millor_ratxa": 0, "partides": 0, "nom": ""}
+BUIT = {"punts": 0, "encerts": 0, "errors": 0, "millor_ratxa": 0, "partides": 0, "dies": []}
 
 
 def db_load(nom):
+    """Progres d'un nen: totals i els dies que ha jugat ('2026-09-25')."""
     clau = clau_jugador(nom)
     if not clau:
         return dict(BUIT)
@@ -137,55 +142,136 @@ def db_load(nom):
         return {**BUIT, **(_api_crida("jugador", {"clau": clau}).get("jugador") or {})}
     eng, _ = get_engine()
     with eng.begin() as c:
-        r = c.execute(text("SELECT punts, encerts, errors, millor_ratxa, partides, nom"
-                           " FROM classificacio WHERE clau = :c"), {"c": clau}).fetchone()
-    if not r:
-        return dict(BUIT)
-    return {"punts": r[0], "encerts": r[1], "errors": r[2], "millor_ratxa": r[3],
-            "partides": r[4], "nom": r[5] or ""}
+        r = c.execute(text("SELECT punts, encerts, errors, millor_ratxa, partides"
+                           " FROM progres WHERE clau = :c"), {"c": clau}).fetchone()
+        dies = [d for (d,) in c.execute(text("SELECT dia FROM dies WHERE clau = :c ORDER BY dia"),
+                                        {"c": clau}).fetchall()]
+    fila = dict(BUIT) if not r else {"punts": r[0], "encerts": r[1], "errors": r[2],
+                                     "millor_ratxa": r[3], "partides": r[4]}
+    fila["dies"] = dies
+    return fila
 
 
 def db_save(nom, punts, encerts, errors, millor_ratxa, partides):
     """Escriu el TOTAL (base d'abans + el d'aquesta sessio). Idempotent.
 
-    Nomes hi viatja el nom public: 'Jan D.', mai el cognom sencer."""
-    clau, public = clau_jugador(nom), nom_public(normalitza_nom(nom))
+    No hi viatja cap nom: nomes la clau calculada (no hi ha classificacio, 25 set 2026)."""
+    clau = clau_jugador(nom)
     if not clau:
-        return ""
-    dades = {"clau": clau, "nom": public, "punts": punts, "encerts": encerts,
+        return
+    dades = {"clau": clau, "punts": punts, "encerts": encerts,
              "errors": errors, "millor_ratxa": millor_ratxa, "partides": partides}
     if _api():
-        return _api_crida("desa", dades).get("nom", public)
+        _api_crida("desa", dades)
+        return
     eng, _ = get_engine()
-    ara = datetime.datetime.now().isoformat(timespec="seconds")
+    fila = {"c": clau, "p": punts, "e": encerts, "x": errors, "r": millor_ratxa,
+            "g": partides, "t": datetime.datetime.now().isoformat(timespec="seconds")}
     with eng.begin() as c:
-        agafats = {n: k for k, n in
-                   c.execute(text("SELECT clau, nom FROM classificacio")).fetchall()}
-        public = nom_lliure(public, clau, agafats)
-        fila = {"c": clau, "n": public, "p": punts, "e": encerts, "x": errors,
-                "r": millor_ratxa, "g": partides, "t": ara}
         fet = c.execute(text("""
-            UPDATE classificacio SET nom = :n, punts = :p, encerts = :e, errors = :x,
+            UPDATE progres SET punts = :p, encerts = :e, errors = :x,
                    millor_ratxa = :r, partides = :g, actualitzat = :t
              WHERE clau = :c"""), fila)
         if not fet.rowcount:      # sense ON CONFLICT: funciona igual a SQLite, Postgres i MySQL
             c.execute(text("""
-                INSERT INTO classificacio (clau, nom, punts, encerts, errors, millor_ratxa,
-                                           partides, actualitzat)
-                VALUES (:c, :n, :p, :e, :x, :r, :g, :t)"""), fila)
-    return public
+                INSERT INTO progres (clau, punts, encerts, errors, millor_ratxa, partides, actualitzat)
+                VALUES (:c, :p, :e, :x, :r, :g, :t)"""), fila)
 
 
-def db_top(n=20):
-    """[(clau, nom public, punts, encerts, errors, millor ratxa)] ordenat."""
+def db_marca_dia(nom, dia):
+    """Apunta que aquest nen ha fet exercicis el dia 'dia' (text 'AAAA-MM-DD')."""
+    clau = clau_jugador(nom)
+    if not clau:
+        return
     if _api():
-        return [(f["clau"], f["nom"], f["punts"], f["encerts"], f["errors"], f["millor_ratxa"])
-                for f in _api_crida("top", {"n": n}).get("top", [])]
+        _api_crida("dia", {"clau": clau, "dia": dia})
+        return
     eng, _ = get_engine()
     with eng.begin() as c:
-        return c.execute(text("SELECT clau, nom, punts, encerts, errors, millor_ratxa"
-                              " FROM classificacio ORDER BY punts DESC, millor_ratxa DESC"
-                              " LIMIT :n"), {"n": n}).fetchall()
+        ja = c.execute(text("SELECT 1 FROM dies WHERE clau = :c AND dia = :d"),
+                       {"c": clau, "d": dia}).fetchone()
+        if not ja:
+            c.execute(text("INSERT INTO dies (clau, dia) VALUES (:c, :d)"), {"c": clau, "d": dia})
+
+
+# ------------------------------------------------------------- calendari i medalles
+# Sense competicio (25 set 2026, el Toni): cada nen nomes veu les SEVES medalles.
+# Un dia sense jugar no resta res ni surt en vermell: nomes se sumen dies bons.
+ZONA = ZoneInfo("Europe/Madrid")
+MESOS = ["GENER", "FEBRER", "MARÇ", "ABRIL", "MAIG", "JUNY", "JULIOL", "AGOST",
+         "SETEMBRE", "OCTUBRE", "NOVEMBRE", "DESEMBRE"]
+DIES_SETMANA = ["DL", "DT", "DC", "DJ", "DV", "DS", "DG"]
+
+
+def avui():
+    return datetime.datetime.now(ZONA).date()
+
+
+def _dates(dies):
+    out = set()
+    for d in dies:
+        try:
+            out.add(datetime.date.fromisoformat(d))
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+def _per_setmana(dates):
+    setmanes = {}
+    for d in dates:
+        setmanes.setdefault(d.isocalendar()[:2], set()).add(d.weekday())
+    return setmanes
+
+
+def _per_mes(dates):
+    mesos = {}
+    for d in dates:
+        mesos[(d.year, d.month)] = mesos.get((d.year, d.month), 0) + 1
+    return mesos
+
+
+# (id, emoji, nom, com s'aconsegueix, condicio sobre el conjunt de dates jugades)
+MEDALLES = [
+    ("primer", "🌱", "PRIMER DIA", "Fes el primer exercici", lambda ds: len(ds) >= 1),
+    ("tres", "🔥", "3 DIES EN UNA SETMANA", "Juga 3 dies de la mateixa setmana",
+     lambda ds: any(len(v) >= 3 for v in _per_setmana(ds).values())),
+    ("setmana", "🏅", "SETMANA COMPLETA", "Juga de dilluns a divendres",
+     lambda ds: any({0, 1, 2, 3, 4} <= v for v in _per_setmana(ds).values())),
+    ("d5", "🥉", "5 DIES", "Juga 5 dies diferents", lambda ds: len(ds) >= 5),
+    ("d10", "🥈", "10 DIES", "Juga 10 dies diferents", lambda ds: len(ds) >= 10),
+    ("mes", "🌟", "12 DIES EN UN MES", "Juga 12 dies del mateix mes",
+     lambda ds: any(v >= 12 for v in _per_mes(ds).values())),
+    ("d20", "🥇", "20 DIES", "Juga 20 dies diferents", lambda ds: len(ds) >= 20),
+    ("d30", "🏆", "30 DIES", "Juga 30 dies diferents", lambda ds: len(ds) >= 30),
+    ("d50", "💎", "50 DIES", "Juga 50 dies diferents", lambda ds: len(ds) >= 50),
+    ("d100", "👑", "100 DIES", "Juga 100 dies diferents", lambda ds: len(ds) >= 100),
+]
+
+
+def medalles_guanyades(dies):
+    ds = _dates(dies)
+    return [m for m in MEDALLES if m[4](ds)]
+
+
+def marca_avui():
+    """Es crida a cada exercici fet (encertat o no: compta l'esforc). El primer
+    del dia dona la medalla del dia i, si toca, alguna medalla especial."""
+    ss = st.session_state
+    dia = avui().isoformat()
+    if dia in ss.dies:
+        return
+    abans = {m[0] for m in medalles_guanyades(ss.dies)}
+    ss.dies = sorted(set(ss.dies) | {dia})
+    ss.avisos.append(("⭐", f"Medalla del dia! Ja en tens {len(ss.dies)}."))
+    for m in medalles_guanyades(ss.dies):
+        if m[0] not in abans:
+            ss.avisos.append((m[1], f"Nova medalla: {m[2]}!"))
+    if ss.nom.strip() and ss.base is not None:
+        try:
+            db_marca_dia(ss.nom, dia)
+        except Exception as e:
+            ss.db_error = str(e)
 
 
 def normalitza_nom(nom):
@@ -218,18 +304,6 @@ def clau_jugador(nom):
     if not parts:
         return ""
     return hashlib.sha256(("aventura-matematica|" + " ".join(parts)).encode()).hexdigest()[:16]
-
-
-def nom_lliure(public, clau, agafats):
-    """Si un altre jugador ja es "Jan D.", aquest sortira com a "Jan D. 2".
-
-    agafats: {nom tal com surt a la llista: clau de qui el te}."""
-    if agafats.get(public) in (None, clau):
-        return public
-    n = 2
-    while agafats.get(public + " " + str(n)) not in (None, clau):
-        n += 1
-    return public + " " + str(n)
 
 
 # Nomes dibuixos, animals i nens. Revisats un a un mirant el primer fotograma:
@@ -560,8 +634,6 @@ def local_css():
       .car { font-size: 1.5rem !important; }
       .gif-overlay img { max-width: 86vw !important; max-height: 45vh !important; height: auto !important; }
       .gif-overlay h1 { font-size: 1.8rem !important; text-align: center !important; padding: 0 12px !important; }
-      .rank-row { font-size: 0.85rem !important; padding: 6px 8px !important; gap: 6px !important; }
-      .rank-row .rank-pct { display: none !important; }
     }
     /* mòbils molt estrets: un botó per línia */
     @media (max-width: 380px) {
@@ -573,8 +645,6 @@ def local_css():
       .car { font-size: 1.5rem !important; }
       .gif-overlay img { max-width: 86vw !important; max-height: 45vh !important; height: auto !important; }
       .gif-overlay h1 { font-size: 1.8rem !important; text-align: center !important; padding: 0 12px !important; }
-      .rank-row { font-size: 0.85rem !important; padding: 6px 8px !important; gap: 6px !important; }
-      .rank-row .rank-pct { display: none !important; }
     }
     /* mòbils molt estrets: un botó per línia als blocs de la home */
     @media (max-width: 430px) {
@@ -606,6 +676,35 @@ def local_css():
     .st-key-penjat_guanya button, .st-key-penjat_perd button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
     .st-key-memory_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-memory_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
+    /* ---- calendari i medalles ---- */
+    .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; max-width: 560px; margin: 6px auto 0 auto; }
+    .cal-cap { text-align: center; font-family: 'Bungee', cursive; font-size: 0.8rem; color: #636E72; }
+    .cal-dia { aspect-ratio: 1; background: white; border: 2px solid #EEE; border-radius: 12px; display: flex;
+               flex-direction: column; align-items: center; justify-content: center; font-weight: 700; color: #2D3436; }
+    .cal-dia.buit { background: transparent; border: none; }
+    .cal-dia.fet { background: #FFF4CC; border-color: #F7B731; }
+    .cal-dia.avui { border: 3px solid #4B7BEC; }
+    .cal-dia.futur { opacity: 0.45; }
+    .cal-dia .num { font-size: 0.95rem; line-height: 1; }
+    .cal-dia .est { font-size: 1.35rem; line-height: 1.15; }
+    .cal-mes { text-align: center; font-family: 'Bungee', cursive; font-size: 1.3rem; color: #EE5253; margin-top: 8px; }
+    .med-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 8px; margin-top: 8px; }
+    .med { background: white; border: 3px solid #F7B731; border-radius: 16px; padding: 8px 6px; text-align: center; }
+    .med .ico { font-size: 2.1rem; line-height: 1.2; }
+    .med .nom { font-family: 'Bungee', cursive; font-size: 0.72rem; color: #2D3436; line-height: 1.2; }
+    .med .com { font-size: 0.74rem; color: #636E72; line-height: 1.2; margin-top: 2px; }
+    .med.no { filter: grayscale(1); opacity: 0.45; border-color: #DDD; }
+    .st-key-calnav div[data-testid="stColumn"] { flex: 1 1 0 !important; min-width: 0 !important; }
+    div.stButton > button:disabled { opacity: 0.35 !important; box-shadow: none !important; cursor: default !important; }
+    @media (max-width: 767px) {
+      .cal { gap: 3px; }
+      .cal-dia { border-radius: 8px; border-width: 1px; }
+      .cal-dia.avui { border-width: 2px; }
+      .cal-dia .num { font-size: 0.72rem; }
+      .cal-dia .est { font-size: 1rem; }
+      .cal-cap { font-size: 0.62rem; }
+      .med-grid { grid-template-columns: repeat(2, 1fr); }
+    }
     #MainMenu, footer, header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -1587,7 +1686,7 @@ DEFAULTS = {
     'kind_label': "", 'lectura_avis': False,
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
-    'base': None, 'nom_actiu': '', 'nom_mostrat': '', 'lletra_idx': 0, 'lletra_set': 'Lletres',
+    'base': None, 'nom_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
     'sopa': None, 'sopa_n': 0, 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
@@ -1623,6 +1722,7 @@ def lletres_actual():
 
 
 def lletres_mou(delta):
+    marca_avui()
     taula = ABECEDARI if st.session_state.lletra_set == "Lletres" else NUMEROS
     st.session_state.lletra_idx = (st.session_state.lletra_idx + delta) % len(taula)
 
@@ -1638,7 +1738,7 @@ def sopa_completada():
     if ss.current_block != "Sopa" or ss.sopa is None:
         return
     ss.punts += SOPA_CFG[ss.sopa["level"]]["bonus"]
-    register(True)                         # +1 punt, encert, ratxa i classificacio
+    register(True)                         # +1 punt, encert, ratxa i medalla del dia
     ss.last_status = "correct"
     new_problem()
 
@@ -1703,17 +1803,17 @@ def reset_lectura():
 def set_calcul_kind(k):
     st.session_state.calcul_kind = k; new_problem()
 
-def sync_ranking():
-    """Puja el total (el que ja tenia + el d'aquesta sessio) a la classificacio."""
+def sync_progres():
+    """Desa el total del nen (el que ja tenia + el d'aquesta sessio)."""
     ss = st.session_state
     nom = ss.nom.strip()
     if not nom or ss.base is None:
         return
     try:
         b = ss.base
-        ss.nom_mostrat = db_save(nom, b["punts"] + ss.punts, b["encerts"] + ss.encerts,
-                                 b["errors"] + ss.errors, max(b["millor_ratxa"], ss.millor_ratxa),
-                                 b["partides"] + ss.partides) or ss.nom_mostrat
+        db_save(nom, b["punts"] + ss.punts, b["encerts"] + ss.encerts,
+                b["errors"] + ss.errors, max(b["millor_ratxa"], ss.millor_ratxa),
+                b["partides"] + ss.partides)
     except Exception as e:
         ss.db_error = str(e)
 
@@ -1734,15 +1834,22 @@ def carrega_base():
     if nom == ss.nom_actiu:
         return
     ss.nom_actiu = nom
+    dia = avui().isoformat()
+    jugat_avui = dia in ss.dies          # pot haver jugat abans d'escriure el nom
     if not nom:
         ss.base = None
+        ss.dies = [dia] if jugat_avui else []
         return
     try:
         ss.base = db_load(nom)
-        ss.nom_mostrat = ss.base.get("nom") or nom_public(normalitza_nom(nom))
+        ss.dies = sorted(set(ss.base.get("dies") or []))
         ss.db_error = ""
+        if jugat_avui and dia not in ss.dies:
+            ss.dies = sorted(set(ss.dies) | {dia})
+            db_marca_dia(nom, dia)
     except Exception as e:
         ss.base = None
+        ss.dies = [dia] if jugat_avui else []
         ss.db_error = str(e)
 
 
@@ -1753,7 +1860,8 @@ def register(correct):
         ss.millor_ratxa = max(ss.millor_ratxa, ss.ratxa)
     else:
         ss.errors += 1; ss.ratxa = 0
-    sync_ranking()
+    marca_avui()
+    sync_progres()
 
 def advance_repte(correct):
     """Compta l'exercici. El nivell el mana el nen, no puja ni baixa sol."""
@@ -1767,7 +1875,7 @@ def advance_repte(correct):
         r["level"] = st.session_state.diff
         st.session_state.partides += 1
         st.session_state.repte_report = r
-        sync_ranking()
+        sync_progres()
 
 def check_answer(value):
     ss = st.session_state
@@ -1789,7 +1897,7 @@ def check_answer(value):
         else:
             ss.last_status = "incorrect"
 
-if not st.session_state.problem_text and st.session_state.current_block not in ("Home", "Ranking"):
+if not st.session_state.problem_text and st.session_state.current_block not in ("Home", "Calendari"):
     new_problem()
 
 # ----------------------------------------------------------------- RENDER
@@ -1823,70 +1931,86 @@ if st.session_state.current_block == "Home":
             f"<div class='chip'>✅ ENCERTS: {round(100 * s.encerts / total)}%</div>"
             f"<div class='chip'>🔥 MILLOR RATXA: {s.millor_ratxa}</div></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
-    st.button("🏆 CLASSIFICACIÓ DE LA CLASSE", key="home_rank", use_container_width=True,
-              on_click=lambda: st.session_state.update(current_block="Ranking"))
+    medalles_txt = f" · ⭐ {len(s.dies)}" if s.dies else ""
+    st.button(f"📅 EL MEU CALENDARI I MEDALLES{medalles_txt}", key="home_cal", use_container_width=True,
+              on_click=lambda: st.session_state.update(current_block="Calendari", cal_mes=None))
     st.markdown("<br>", unsafe_allow_html=True)
     if "nom_input" not in st.session_state:
         st.session_state.nom_input = st.session_state.nom
-    st.text_input("Nom i cognom (per sortir a la classificació)", key="nom_input",
+    st.text_input("El teu nom i cognom (per guardar el teu calendari)", key="nom_input",
                   max_chars=40, placeholder="Ex: Jan Donoso", on_change=on_nom_change)
     st.session_state.nom = normalitza_nom(st.session_state.nom_input)
     carrega_base()
     if st.session_state.nom.strip() and st.session_state.base:
-        b = st.session_state.base
-        mostrat = st.session_state.nom_mostrat or nom_public(normalitza_nom(st.session_state.nom))
-        st.caption(f"Benvingut/da de nou! Tens {b['punts']} punts acumulats. "
-                   f"A la classificació surts com a **{mostrat}**. "
+        n = len(st.session_state.dies)
+        hola = (f"Hola de nou! Portes {n} medalla del dia. " if n == 1 else
+                f"Hola de nou! Portes {n} medalles del dia. " if n else "Hola! ")
+        st.caption(hola + "Cada dia que facis exercicis en guanyes una. "
                    "El cognom no es desa enlloc: només serveix per reconèixer-te.")
     elif not st.session_state.nom.strip():
-        st.caption("Sense nom pots jugar igual, però no sortiràs a la classificació. "
-                   "A la llista només hi surt el nom i la inicial: **Jan D.**")
+        st.caption("Sense nom pots jugar igual, però el teu calendari no es guardarà per a un altre dia.")
     if st.session_state.db_error:
-        st.warning("No s'ha pogut desar la puntuació: " + st.session_state.db_error)
+        st.warning("No s'ha pogut desar el progrés: " + st.session_state.db_error)
 
-elif st.session_state.current_block == "Ranking":
-    # ---- Classificacio de la classe ----
+elif st.session_state.current_block == "Calendari":
+    # ---- El meu calendari: nomes les medalles d'aquest nen, sense comparar amb ningu ----
     ss = st.session_state
+    hui = avui()
+    if ss.cal_mes is None:
+        ss.cal_mes = (hui.year, hui.month)
+    any_, mes = ss.cal_mes
+    jugats = _dates(ss.dies)
+    guanyades = {m[0] for m in medalles_guanyades(ss.dies)}
+    setmana = sum(1 for d in jugats if d.isocalendar()[:2] == hui.isocalendar()[:2])
     with st.container(key="maincard"):
-        st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B;'>🏆 CLASSIFICACIÓ</h2>", unsafe_allow_html=True)
-        try:
-            files = db_top(20)
-            sense_db = (not _api()) and get_engine()[1]
-        except Exception as e:
-            files, sense_db = [], False
-            st.error("No s'ha pogut llegir la classificació: " + str(e))
-        jo = clau_jugador(ss.nom)
-        if not files:
-            st.markdown("<p>Encara no hi ha ningú. Sigues el primer! 🚀</p>", unsafe_allow_html=True)
-        else:
-            medalles = {1: "🥇", 2: "🥈", 3: "🥉"}
-            html = ["<div style='display:flex; flex-direction:column; gap:6px;'>"]
-            for i, (clau, nom, punts, enc, err, ratxa) in enumerate(files, 1):
-                tot = enc + err
-                pct = round(100 * enc / tot) if tot else 0
-                meu = (clau == jo)
-                fons = "#FFF4CC" if meu else "white"
-                vora = "3px solid #F7B731" if meu else "1px solid #EEE"
-                html.append(
-                    f"<div class='rank-row' style='display:flex; align-items:center; gap:12px; background:{fons};"
-                    f" border:{vora}; border-radius:14px; padding:8px 14px;'>"
-                    f"<div style=\"font-family:Bungee; width:46px;\">{medalles.get(i, str(i) + '.')}</div>"
-                    f"<div style='flex:1; font-weight:700;'>{nom}</div>"
-                    f"<div style='font-family:Bungee; color:#EE5253;'>⭐ {punts}</div>"
-                    f"<div class='rank-pct' style='width:70px; text-align:right;'>✅ {pct}%</div>"
-                    f"<div style='width:60px; text-align:right;'>🔥 {ratxa}</div></div>")
-            html.append("</div>")
-            st.markdown("".join(html), unsafe_allow_html=True)
-            if jo and not any(c == jo for c, *_ in files):
-                mostrat = ss.nom_mostrat or nom_public(normalitza_nom(ss.nom))
-                st.markdown(f"<p style='margin-top:10px;'>Encara no ets al top 20, "
-                            f"<b>{mostrat}</b>. A jugar! 💪</p>", unsafe_allow_html=True)
-        if sense_db:
-            st.caption("⚠️ Sense base de dades configurada: la classificació es guarda en local i "
-                       "es perdrà en cada redesplegament. Calen els secrets `api_url` i `api_key` "
-                       "(servidor propi) o `db_url`.")
+        st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B;'>📅 EL MEU CALENDARI</h2>",
+                    unsafe_allow_html=True)
+        st.markdown(
+            f"<div class='scoreboard'><div class='chip'>⭐ {len(jugats)} "
+            f"{'MEDALLA' if len(jugats) == 1 else 'MEDALLES'} DEL DIA</div>"
+            f"<div class='chip'>📆 {setmana} {'DIA' if setmana == 1 else 'DIES'} AQUESTA SETMANA</div>"
+            f"<div class='chip'>🏅 {len(guanyades)} DE {len(MEDALLES)} ESPECIALS</div></div>",
+            unsafe_allow_html=True)
+        if not ss.nom.strip():
+            st.info("Escriu el teu nom a l'inici perquè el calendari es guardi per a un altre dia.")
+        import calendar as _calendar
+        cel = [f"<div class='cal-cap'>{x}</div>" for x in DIES_SETMANA]
+        for d in _calendar.Calendar(firstweekday=0).itermonthdates(any_, mes):
+            if d.month != mes:
+                cel.append("<div class='cal-dia buit'></div>")
+                continue
+            cls = "cal-dia" + (" fet" if d in jugats else "") + (" avui" if d == hui else "") \
+                + (" futur" if d > hui else "")
+            est = "<span class='est'>⭐</span>" if d in jugats else ""
+            cel.append(f"<div class='{cls}'><span class='num'>{d.day}</span>{est}</div>")
+        st.markdown(f"<div class='cal-mes'>{MESOS[mes - 1]} {any_}</div>"
+                    f"<div class='cal'>{''.join(cel)}</div>", unsafe_allow_html=True)
+
+        def _mou_mes(delta):
+            a, m = st.session_state.cal_mes
+            m += delta
+            a, m = (a - 1, 12) if m < 1 else ((a + 1, 1) if m > 12 else (a, m))
+            st.session_state.cal_mes = (a, m)
+
+        with st.container(key="calnav"):
+            nav = st.columns(2)
+            nav[0].button("⬅️ MES ANTERIOR", key="cal_prev", use_container_width=True,
+                          on_click=_mou_mes, args=(-1,))
+            nav[1].button("MES SEGÜENT ➡️", key="cal_next", use_container_width=True,
+                          on_click=_mou_mes, args=(1,), disabled=(any_, mes) >= (hui.year, hui.month))
+
+        st.markdown("<h3 style='margin-top:18px;'>🏅 LES MEVES MEDALLES</h3>", unsafe_allow_html=True)
+        targetes = []
+        for mid, ico, nom, com, _ in MEDALLES:
+            classe = "med" if mid in guanyades else "med no"
+            targetes.append(f"<div class='{classe}'><div class='ico'>{ico}</div>"
+                            f"<div class='nom'>{nom}</div><div class='com'>{com}</div></div>")
+        st.markdown(f"<div class='med-grid'>{''.join(targetes)}</div>", unsafe_allow_html=True)
+        if not _api() and get_engine()[1] and ss.nom.strip():
+            st.caption("⚠️ Sense servidor configurat: el calendari només es guarda en aquest aparell "
+                       "i es pot perdre. Calen els secrets `api_url` i `api_key`.")
         st.markdown("<br>", unsafe_allow_html=True)
-        st.button("🏠 INICI", key="rank_home", use_container_width=True,
+        st.button("🏠 INICI", key="cal_home", use_container_width=True,
                   on_click=lambda: st.session_state.update(current_block="Home"))
 
 elif st.session_state.repte_report is not None:
@@ -1972,7 +2096,7 @@ else:
 
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
-        who = ss.nom_mostrat or nom_public(normalitza_nom(ss.nom)) or "Jugador/a"
+        who = nom_public(normalitza_nom(ss.nom)) or "Jugador/a"
         st.markdown(f"<div class='chip'>👦 {who} · ⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
         st.markdown("---")
         if st.button("🏠 INICI", key="sb_home", use_container_width=True):
@@ -2028,6 +2152,7 @@ else:
             rcol.button("🔄 REINICIAR", key="lec_reset", use_container_width=True,
                         help="Torna els cotxes a la sortida", on_click=reset_lectura)
             if bcol.button("LLEGIT! ✅", use_container_width=True):
+                marca_avui()
                 elapsed = time.time() - ss.word_start_time
                 # Sense cartells ni bloquejos: sempre avances. Pero si claques
                 # sense haver llegit, el rival avanca mes que tu i acabes perdent.
@@ -2142,3 +2267,11 @@ if st.session_state.last_status:
         st.markdown("<div class='gif-overlay' style='background:rgba(244,67,54,0.9);'><h1 style='font-family:Bungee; color:white; font-size:3rem;'>PROVA DE NOU! 🔄</h1></div>", unsafe_allow_html=True)
         time.sleep(1.5)
     safe_rerun()
+
+# ------------------------------------------------------------ AVISOS DE MEDALLA
+# Nomes arriba aqui quan no hi ha GIF de celebracio (aquell bloc acaba amb rerun):
+# aixi el toast no es perd. Discrets i sense aturar el joc.
+if st.session_state.avisos:
+    for icona, text_avis in st.session_state.avisos:
+        st.toast(text_avis, icon=icona)
+    st.session_state.avisos = []
