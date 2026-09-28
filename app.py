@@ -263,10 +263,14 @@ def marca_avui():
         return
     abans = {m[0] for m in medalles_guanyades(ss.dies)}
     ss.dies = sorted(set(ss.dies) | {dia})
-    ss.avisos.append(("⭐", f"Medalla del dia! Ja en tens {len(ss.dies)}."))
+    n = len(ss.dies)
+    if n == 1:      # el primer dia, un sol missatge (abans sortien dos que deien el mateix)
+        ss.avisos.append(("⭐ 🌱", "LA TEVA PRIMERA MEDALLA!", "CADA DIA QUE JUGUIS EN GUANYES UNA"))
+    else:
+        ss.avisos.append(("⭐", "MEDALLA DEL DIA!", f"JA EN TENS {n}"))
     for m in medalles_guanyades(ss.dies):
-        if m[0] not in abans:
-            ss.avisos.append((m[1], f"Nova medalla: {m[2]}!"))
+        if m[0] not in abans and m[0] != "primer":
+            ss.avisos.append((m[1], "NOVA MEDALLA!", m[2]))
     if ss.nom.strip() and ss.base is not None:
         try:
             db_marca_dia(ss.nom, dia)
@@ -653,6 +657,18 @@ def local_css():
     }
     .race-track { background: #333; height: 60px; width: 100%; border-radius: 15px; position: relative; margin: 10px 0; border: 3px dashed white; overflow: hidden; }
     .car { font-size: 2rem; position: absolute; transition: left 0.5s ease; top: 50%; transform: translateY(-50%); }
+    .medal-overlay { background: radial-gradient(circle, rgba(255,244,204,0.97) 0%, rgba(255,214,102,0.95) 100%) !important; }
+    .medal-icones { font-size: 7rem; line-height: 1.1; animation: medalpop 0.7s ease-out; }
+    .medal-overlay h1 { font-family: 'Bungee', cursive; color: #EE5253; font-size: 3rem; margin: 14px 0 0 0; text-align: center; }
+    .medal-overlay h2 { font-family: 'Bungee', cursive; color: #2D3436; font-size: 1.6rem; margin: 6px 0 0 0; text-align: center; padding: 0 14px; }
+    @keyframes medalpop { 0% { transform: scale(0.2) rotate(-25deg); opacity: 0; }
+                          65% { transform: scale(1.18) rotate(6deg); opacity: 1; }
+                          100% { transform: scale(1) rotate(0); } }
+    @media (max-width: 767px) {
+      .medal-icones { font-size: 4.6rem; }
+      .medal-overlay h1 { font-size: 1.9rem !important; }
+      .medal-overlay h2 { font-size: 1.1rem; }
+    }
     .gif-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; }
     .scoreboard { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
     .chip { background: white; border-radius: 15px; padding: 6px 14px; font-family: 'Bungee', cursive; color: #2D3436; box-shadow: 0 3px 0 rgba(0,0,0,0.1); font-size: 1rem; }
@@ -2269,9 +2285,16 @@ if st.session_state.last_status:
     safe_rerun()
 
 # ------------------------------------------------------------ AVISOS DE MEDALLA
-# Nomes arriba aqui quan no hi ha GIF de celebracio (aquell bloc acaba amb rerun):
-# aixi el toast no es perd. Discrets i sense aturar el joc.
+# Pantalla de celebracio com la de les felicitacions: ocupa tota la pantalla i marxa
+# sola, SENSE recuadre ni X per tancar (28 set 2026: la X del toast era massa petita i
+# molestava els nens). Nomes arriba aqui quan no hi ha GIF (aquell bloc acaba amb
+# rerun), aixi que si toquen totes dues surt primer el GIF i despres la medalla.
 if st.session_state.avisos:
-    for icona, text_avis in st.session_state.avisos:
-        st.toast(text_avis, icon=icona)
+    avisos = st.session_state.avisos
     st.session_state.avisos = []
+    icones = " ".join(a[0] for a in avisos)
+    textos = "".join(f"<h1>{titol}</h1><h2>{sub}</h2>" for _, titol, sub in avisos)
+    st.markdown(f"<div class='gif-overlay medal-overlay'><div class='medal-icones'>{icones}</div>"
+                f"{textos}</div>", unsafe_allow_html=True)
+    time.sleep(2.5 if len(avisos) == 1 else 3.5)
+    safe_rerun()
