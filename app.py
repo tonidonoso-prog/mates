@@ -21,6 +21,7 @@ BLOCKS = [
     ("🧠", "MEMORY", "Memory", "Gira les cartes i troba les parelles"),
     ("🔠", "PENJAT", "Penjat", "Endevina la paraula lletra a lletra"),
     ("🎨", "COLOREJA", "Colors", "Pinta més de 100 dibuixos amb la paleta"),
+    ("👾", "MONSTRE GOLUT", "Golut", "Dona-li els plats que fan el seu número"),
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
 SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
@@ -567,6 +568,61 @@ def genera_penjat(diff, evita=()):
             "pista": cfg["pista"], "visibles": visibles}
 
 
+# ---- Monstre golut: el monstre demana un numero i cal donar-li els plats que,
+# junts, el fan (sumant o multiplicant). k = plats que cal triar.
+GOLUT_OPS = [("➕ SUMA", "suma"), ("✖️ MULTIPLICACIÓ", "mult")]
+GOLUT_CFG = {
+    "suma": {
+        "Fàcil":   {"k": 2, "plats": 6, "nums": (1, 10), "objectiu": (5, 10)},
+        "Normal":  {"k": 2, "plats": 8, "nums": (1, 15), "objectiu": (11, 20)},
+        "Difícil": {"k": 3, "plats": 8, "nums": (1, 12), "objectiu": (12, 25)},
+    },
+    "mult": {
+        "Fàcil":   {"k": 2, "plats": 6, "nums": (1, 10), "taules": (2, 5, 10)},
+        "Normal":  {"k": 2, "plats": 8, "nums": (1, 10), "taules": (2, 3, 4, 5, 6, 7, 8, 9)},
+        # amb 3 plats nomes sortien 9 objectius diferents: millor les taules dificils
+        "Difícil": {"k": 2, "plats": 8, "nums": (1, 10), "taules": (6, 7, 8, 9)},
+    },
+}
+
+
+def golut_valor(nums, op):
+    total = 0 if op == "suma" else 1
+    for n in nums:
+        total = total + n if op == "suma" else total * n
+    return total
+
+
+def genera_golut(diff, op, evita=()):
+    """Un monstre: objectiu, plats (tots diferents) i una solucio garantida."""
+    cfg = GOLUT_CFG[op][diff]
+    k, (lo, hi) = cfg["k"], cfg["nums"]
+    for _ in range(500):
+        if op == "suma":
+            sol = random.sample(range(lo, hi + 1), k)
+            objectiu = sum(sol)
+            if not cfg["objectiu"][0] <= objectiu <= cfg["objectiu"][1]:
+                continue
+        else:
+            if k == 2:
+                a = random.choice(cfg["taules"])
+                b = random.randint(2, 10)
+                sol = [a, b]
+            else:
+                sol = random.sample(cfg["taules"], 3)
+            if len(set(sol)) < k:      # 5 x 5 necessitaria dos plats iguals
+                continue
+            objectiu = golut_valor(sol, op)
+        if objectiu in evita:
+            continue
+        resta = [n for n in range(lo, hi + 1) if n not in sol]
+        plats = sol + random.sample(resta, cfg["plats"] - k)
+        random.shuffle(plats)
+        return {"objectiu": objectiu, "plats": plats, "solucio": sorted(sol),
+                "k": k, "op": op, "level": diff}
+    raise RuntimeError("No s'ha pogut generar el monstre")
+
+
 # Carrera de lectura: (segons de base, segons per lletra) que es consideren "bon ritme"
 LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.5, 0.52), "Difícil": (1.5, 0.47)}
 
@@ -688,6 +744,8 @@ def local_css():
     /* boto invisible que la sopa de lletres clica sola quan s'han trobat totes les paraules */
     .st-key-sopa_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-sopa_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
+    .st-key-golut_ok, .st-key-golut_ko { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
+    .st-key-golut_ok button, .st-key-golut_ko button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
     .st-key-penjat_guanya, .st-key-penjat_perd { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-penjat_guanya button, .st-key-penjat_perd button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
     .st-key-memory_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
@@ -1007,6 +1065,190 @@ def sopa_component(sopa, nonce):
         .replace("__N__", str(n))
         .replace("__NONCE__", nonce))
     components.html(html, height={8: 520, 10: 610, 13: 740}.get(n, 60 * n))
+
+
+def golut_component(g, nonce):
+    """El monstre i la cinta de plats. Tot el joc passa al navegador:
+    - encert: el monstre se'ls menja i es clica el boto invisible 'golut_ok';
+    - primer error: els plats tornen a la cinta i pot tornar-ho a provar;
+    - segon error: ensenya la solucio en verd i clica 'golut_ko' (sense cartell)."""
+    simbol = "+" if g["op"] == "suma" else "×"
+    verb = "sumin" if g["op"] == "suma" else "multiplicats facin"
+    html = ("""
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bungee&family=Andika:wght@700&display=swap');
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:'Andika','Trebuchet MS',sans-serif; background:transparent;
+         user-select:none; -webkit-user-select:none; }
+  #wrap { display:flex; flex-direction:column; align-items:center; gap:8px; max-width:720px; margin:0 auto; }
+  #dalt { display:flex; align-items:center; justify-content:center; gap:18px; }
+  .monstre { width:140px; height:124px; position:relative; flex:none;
+             background:radial-gradient(circle at 35% 30%, #C9A7FF, #7C4DFF);
+             border-radius:50% 50% 44% 44%; box-shadow:0 6px 0 #5E35B1; }
+  .monstre::before, .monstre::after { content:''; position:absolute; top:-14px; width:0; height:0;
+             border-left:12px solid transparent; border-right:12px solid transparent;
+             border-bottom:22px solid #7C4DFF; }
+  .monstre::before { left:24px; transform:rotate(-15deg); }
+  .monstre::after { right:24px; transform:rotate(15deg); }
+  .ull { position:absolute; top:26px; width:34px; height:34px; background:#fff; border-radius:50%; }
+  .ull.e { left:28px; } .ull.d { right:28px; }
+  .pupil { position:absolute; top:11px; left:11px; width:13px; height:13px; background:#2D3436;
+           border-radius:50%; transition:transform .2s; }
+  .boca { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); width:58px; height:20px;
+          background:#B71C1C; border-radius:0 0 40px 40px; transition:height .2s, width .2s; overflow:hidden; }
+  .boca::after { content:''; position:absolute; top:0; left:12px; width:10px; height:8px; background:#fff;
+                 border-radius:0 0 4px 4px; box-shadow:24px 0 0 #fff; }
+  .monstre.menja { animation:nyam .55s ease-in-out 2; }
+  .monstre.menja .boca { height:44px; width:66px; }
+  .monstre.trist .boca { height:10px; border-radius:40px 40px 0 0; bottom:26px; }
+  @keyframes nyam { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12) rotate(-4deg); } }
+  .cartell { text-align:center; }
+  .num { font-family:'Bungee',cursive; font-size:3rem; color:#EE5253; line-height:1;
+         background:#FFF4CC; border:4px solid #F7B731; border-radius:18px; padding:6px 20px; display:inline-block; }
+  .peticio { font-size:1rem; color:#2D3436; margin-top:6px; }
+  #safata { min-height:50px; font-family:'Bungee',cursive; font-size:1.7rem; color:#2D3436;
+            display:flex; align-items:center; justify-content:center; gap:8px; }
+  #cinta { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; padding:14px 10px; width:100%;
+           border-radius:20px; background:repeating-linear-gradient(90deg,#DFE6E9 0 22px,#CFD8DC 22px 44px);
+           background-size:44px 100%; animation:cinta 2.5s linear infinite; }
+  @keyframes cinta { from { background-position:0 0; } to { background-position:44px 0; } }
+  .plat { width:76px; height:76px; border-radius:50%; background:#fff; border:7px solid var(--c);
+          box-shadow:0 5px 0 rgba(0,0,0,.18); font-family:'Bungee',cursive; font-size:1.9rem; color:#2D3436;
+          display:flex; align-items:center; justify-content:center; cursor:pointer;
+          transition:transform .15s, opacity .3s; }
+  .plat.triat { transform:translateY(-10px) scale(1.08); background:#FFF4CC; }
+  .plat.menjat { opacity:0; transform:scale(.3); }
+  .plat.solucio { background:#20BF6B; color:#fff; border-color:#0B7A45; }
+  .plat.tremola { animation:tremola .4s; }
+  @keyframes tremola { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  #msg { font-weight:700; color:#EE5253; text-align:center; min-height:26px; font-size:1.15rem; }
+  @media (max-width:520px) {
+    .monstre { width:110px; height:98px; } .ull { width:28px; height:28px; top:20px; }
+    .ull.e { left:20px; } .ull.d { right:20px; } .pupil { top:8px; left:8px; width:12px; height:12px; }
+    .num { font-size:2.2rem; padding:4px 14px; } .peticio { font-size:.85rem; }
+    .plat { width:60px; height:60px; font-size:1.45rem; border-width:6px; }
+    #cinta { gap:9px; } #safata { font-size:1.35rem; }
+  }
+</style>
+<div id="wrap">
+  <div id="dalt">
+    <div class="monstre" id="monstre">
+      <div class="ull e"><div class="pupil"></div></div>
+      <div class="ull d"><div class="pupil"></div></div>
+      <div class="boca"></div>
+    </div>
+    <div class="cartell">
+      <div class="num">__OBJ__</div>
+      <div class="peticio">Dona'm <b>__K__ plats</b> que __VERB__ <b>__OBJ__</b></div>
+    </div>
+  </div>
+  <div id="safata"></div>
+  <div id="cinta"></div>
+  <div id="msg"></div>
+</div>
+<script>
+  const OBJ = __OBJ__, K = __K__, OP = "__OP__", SIMB = "__SIMB__", PLATS = __PLATS__,
+        SOL = __SOL__, NONCE = "__NONCE__";
+  const COLORS = ['#FF6B6B','#4B7BEC','#20BF6B','#F7B731','#A55EEA','#FD9644','#2BCBBA','#EB3B5A'];
+  const cinta = document.getElementById('cinta'), safata = document.getElementById('safata'),
+        msg = document.getElementById('msg'), monstre = document.getElementById('monstre');
+  let triats = [], intents = 0, bloquejat = false;
+  const plats = PLATS.map((n, i) => {
+    const d = document.createElement('div'); d.className = 'plat'; d.textContent = n;
+    d.style.setProperty('--c', COLORS[i % COLORS.length]);
+    d.onclick = () => toca(i); cinta.appendChild(d); return d;
+  });
+  function valor(ns) { return ns.reduce((a, n) => OP === 'suma' ? a + n : a * n, OP === 'suma' ? 0 : 1); }
+  function pinta() {
+    const ns = triats.map(i => PLATS[i]);
+    const falten = Array(K - ns.length).fill('?');
+    safata.textContent = ns.concat(falten).join(' ' + SIMB + ' ') + ' = ' +
+      (ns.length === K ? valor(ns) : '?');
+    plats.forEach((p, i) => p.classList.toggle('triat', triats.includes(i)));
+    ajusta();
+  }
+  function ajusta() {
+    try {
+      const fr = window.frameElement;
+      if (!fr) return;
+      const h = (document.getElementById('wrap').scrollHeight + 14) + 'px';
+      fr.style.height = h;
+      // Streamlit fixa l'alcada inicial al contenidor amb 'flex: 0 0 500px': cal
+      // canviar l'alcada i tambe el flex, si no queda un forat en blanc a sota
+      const cont = fr.closest('[data-testid="stElementContainer"]');
+      if (cont) {
+        cont.style.setProperty('height', h, 'important');
+        cont.style.setProperty('flex', '0 0 ' + h, 'important');
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('resize', ajusta);
+  function mira(dx) { document.querySelectorAll('.pupil').forEach(p => p.style.transform = 'translateX(' + dx + 'px)'); }
+  function avisa(clau, espera) {
+    setTimeout(() => {
+      try {
+        const b = window.parent.document.querySelector('.st-key-' + clau + ' button');
+        if (b) { b.click(); return; }
+      } catch (e) {}
+      msg.textContent = "Prem UN ALTRE MONSTRE per continuar";
+    }, espera);
+  }
+  function toca(i) {
+    if (bloquejat) return;
+    const j = triats.indexOf(i);
+    if (j >= 0) triats.splice(j, 1);           // tornar-lo a tocar el treu
+    else if (triats.length < K) triats.push(i);
+    msg.textContent = ''; mira(i < PLATS.length / 2 ? -5 : 5); pinta();
+    if (triats.length === K) comprova();
+  }
+  function comprova() {
+    const ns = triats.map(i => PLATS[i]);
+    if (valor(ns) === OBJ) {
+      bloquejat = true; msg.style.color = '#20BF6B'; msg.textContent = 'NYAM NYAM! 😋';
+      monstre.classList.add('menja');
+      triats.forEach(i => plats[i].classList.add('menjat'));
+      avisa('golut_ok', 1300);
+      return;
+    }
+    intents++;
+    monstre.classList.add('trist');
+    triats.forEach(i => plats[i].classList.add('tremola'));
+    if (intents < 2) {
+      msg.textContent = (ns.join(' ' + SIMB + ' ') + ' fa ' + valor(ns) + '. Torna-ho a provar! 💪');
+      bloquejat = true;
+      setTimeout(() => {
+        triats.forEach(i => plats[i].classList.remove('tremola'));
+        monstre.classList.remove('trist'); triats = []; bloquejat = false; pinta();
+      }, 1100);
+      return;
+    }
+    // segon error: ensenyem una solucio i passem al seguent, sense cartell
+    bloquejat = true;
+    setTimeout(() => {
+      triats = []; pinta();
+      const usats = new Set();
+      SOL.forEach(n => {
+        const i = PLATS.findIndex((v, k) => v === n && !usats.has(k)); usats.add(i);
+        plats[i].classList.add('solucio');
+      });
+      safata.textContent = SOL.join(' ' + SIMB + ' ') + ' = ' + OBJ;
+      msg.textContent = 'Era aquesta! El proper segur que sí 💪';
+      ajusta();
+      avisa('golut_ko', 2600);
+    }, 900);
+  }
+  pinta();
+</script>
+"""
+        .replace("__OBJ__", str(g["objectiu"]))
+        .replace("__K__", str(g["k"]))
+        .replace("__VERB__", verb)
+        .replace("__OP__", g["op"])
+        .replace("__SIMB__", simbol)
+        .replace("__PLATS__", json.dumps(g["plats"]))
+        .replace("__SOL__", json.dumps(g["solucio"]))
+        .replace("__NONCE__", nonce))
+    components.html(html, height=500)
 
 
 def penjat_component(pj, nonce):
@@ -1641,6 +1883,12 @@ def new_problem():
         ss.sopa = genera_sopa(diff)
         ss.sopa_n += 1                     # canvia la clau del component: graella nova de zero
         return
+    if block == "Golut":
+        ss.problem_text = "golut"
+        abans = ss.golut["objectiu"] if ss.golut else None
+        ss.golut = genera_golut(diff, ss.golut_op, evita=(abans,))
+        ss.golut_n += 1
+        return
     if block == "Penjat":
         ss.problem_text = "penjat"
         ss.penjat = genera_penjat(diff, evita=ss.penjat_vistes)
@@ -1703,7 +1951,7 @@ DEFAULTS = {
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
     'base': None, 'nom_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
-    'sopa': None, 'sopa_n': 0, 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
+    'sopa': None, 'sopa_n': 0, 'golut': None, 'golut_n': 0, 'golut_op': 'suma', 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -1756,6 +2004,30 @@ def sopa_completada():
     ss.punts += SOPA_CFG[ss.sopa["level"]]["bonus"]
     register(True)                         # +1 punt, encert, ratxa i medalla del dia
     ss.last_status = "correct"
+    new_problem()
+
+
+def golut_encert():
+    ss = st.session_state
+    if ss.current_block != "Golut" or ss.golut is None:
+        return
+    register(True)
+    ss.last_status = "correct"
+    new_problem()
+
+
+def golut_error():
+    """El component ja ha ensenyat la solucio: nomes comptem l'error i passem
+    al seguent monstre, sense cartell."""
+    ss = st.session_state
+    if ss.current_block != "Golut" or ss.golut is None:
+        return
+    register(False)
+    new_problem()
+
+
+def set_golut_op(op):
+    st.session_state.golut_op = op
     new_problem()
 
 
@@ -1930,11 +2202,13 @@ if st.session_state.current_block == "Home":
     st.markdown(f"<p style='font-size:1.1rem;'>{hola}Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     # La descripcio va DINS de la columna del seu boto: aixi queda alineada
     # sempre. Abans anaven totes en una fila a part i es descolocaven en
-    # arribar al final de linia. Vuit blocs: dues files de quatre.
+    # arribar al final de linia. Files de tres; si a l'ultima en queda un, va al mig.
     with st.container(key="homeblocks"):
         for i in range(0, len(BLOCKS), 3):
             fila = BLOCKS[i:i + 3]
             cols = st.columns(3)
+            if len(fila) == 1:
+                cols = cols[1:2]
             for col, (icon, label, block, desc) in zip(cols, fila):
                 col.button(f"{icon} {label}", key=f"home_{block}", use_container_width=True,
                            on_click=start_block, args=(block,))
@@ -2066,12 +2340,14 @@ else:
         active += [f"ctl_op_{op_slug}", f"sb_op_{op_slug}"]
     if ss.current_block == "Calcul":
         active.append("sb_kind_" + slugify(ss.calcul_kind))
+    if ss.current_block == "Golut":
+        active += [f"ctl_gop_{ss.golut_op}", f"sb_gop_{ss.golut_op}"]
     if ss.current_block == "Lletres":
         active = ["ctl_set_lletres"] if ss.lletra_set == "Lletres" else ["ctl_set_numeros"]
     if ss.current_block == "Colors":
         active = []
     st.markdown("<style>" + "".join(
-        f".st-key-{k} button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
+        f".st-key-{k} div.stButton > button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
         f" box-shadow: 0 5px 0px #0B7A45 !important; }}" for k in active) + "</style>", unsafe_allow_html=True)
 
     # Barra sempre visible (si la sidebar es col.lapsa, els botons segueixen aqui)
@@ -2109,6 +2385,11 @@ else:
             for col, (label, mode, slug) in zip(ocols, OPS):
                 col.button(label, key=f"ctl_op_{slug}", use_container_width=True,
                            on_click=set_mode, args=(mode,))
+        if ss.current_block == "Golut":
+            ocols = st.columns(2)
+            for col, (label, op) in zip(ocols, GOLUT_OPS):
+                col.button(label, key=f"ctl_gop_{op}", use_container_width=True,
+                           on_click=set_golut_op, args=(op,))
 
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
@@ -2122,6 +2403,11 @@ else:
             for label, mode, slug in OPS:
                 if st.button(label, key=f"sb_op_{slug}", use_container_width=True):
                     set_mode(mode); safe_rerun()
+            st.markdown("---")
+        if ss.current_block == "Golut":
+            for label, op in GOLUT_OPS:
+                if st.button(label, key=f"sb_gop_{op}", use_container_width=True):
+                    set_golut_op(op); safe_rerun()
             st.markdown("---")
         if ss.current_block == "Calcul":
             for label, kind in CALCUL_KINDS:
@@ -2145,6 +2431,9 @@ else:
         elif ss.current_block == "Sopa":
             st.markdown(f"<h3>SOPA DE LLETRES • {ss.diff.upper()} • TROBA {len(ss.sopa['words'])} PARAULES</h3>",
                         unsafe_allow_html=True)
+        elif ss.current_block == "Golut":
+            nom_op = dict((o, l.split(" ", 1)[1]) for l, o in GOLUT_OPS)[ss.golut_op]
+            st.markdown(f"<h3>MONSTRE GOLUT • {ss.diff.upper()} • {nom_op}</h3>", unsafe_allow_html=True)
         elif ss.current_block == "Penjat":
             st.markdown(f"<h3>PENJAT • {ss.diff.upper()} • {ss.penjat['errors']} VIDES</h3>",
                         unsafe_allow_html=True)
@@ -2226,6 +2515,12 @@ else:
             # El clica sol el component quan s'han trobat totes (CSS: invisible)
             st.button("fet", key="sopa_done", on_click=sopa_completada)
             st.button("🔁 NOVA SOPA", key="sopa_nova", use_container_width=True, on_click=new_problem)
+        elif ss.current_block == "Golut":
+            golut_component(ss.golut, f"{ss.diff}-{ss.golut_op}-{ss.golut_n}")
+            st.button("🔁 UN ALTRE MONSTRE", key="golut_nou", use_container_width=True, on_click=new_problem)
+            # botons invisibles que clica el joc (encert / dos errors)
+            st.button("ok", key="golut_ok", on_click=golut_encert)
+            st.button("ko", key="golut_ko", on_click=golut_error)
         elif ss.current_block == "Penjat":
             st.markdown("<p style='text-align:center; margin:0 0 6px 0;'>Toca les lletres per endevinar "
                         "la paraula abans que es completi el dibuix.</p>", unsafe_allow_html=True)
