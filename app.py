@@ -808,7 +808,11 @@ def concurs_entra(pin, pid):
     with c["lock"]:
         sa = c["sales"].get(pin)
         if not sa:
-            return False, "Aquest codi no existeix. Revisa'l amb el mestre o la mestra."
+            # 15 nov 2026: el Toni va topar amb aquest missatge sense saber per que. Hi posem el
+            # codi que s'ha escrit i les dues causes reals (codi mal copiat o partida perduda).
+            return False, (f"No hi ha cap partida amb el codi {pin}. Mira bé el número de la pantalla "
+                           "gran. Si la partida es va crear fa estona o l'app s'ha reiniciat, el mestre "
+                           "o la mestra n'ha de crear una de nova.")
         if pid in sa["jugadors"]:
             return True, ""
         if sa["fase"] == "final":
@@ -2657,6 +2661,13 @@ def _cq_crea():
         ss.cq_error = "Ara mateix hi ha massa partides obertes. Torna-ho a provar d'aquí a una estona."
 
 
+def _cq_entra_si_complet():
+    """Amb el teclat del mobil: en prémer Intro amb 4 números ja s'entra, sense el boto."""
+    codi = "".join(ch for ch in (st.session_state.cq_codi or "") if ch.isdigit())
+    if len(codi) == 4:
+        _cq_entra()
+
+
 def _cq_entra():
     ss = st.session_state
     codi = "".join(ch for ch in (ss.cq_codi or "") if ch.isdigit())
@@ -2698,7 +2709,8 @@ def concurs_inici():
         return
     if not ss.conc_pin:
         st.text_input("Codi de la partida (el que surt a la pantalla gran)", max_chars=4,
-                      key="cq_codi", placeholder="1234")
+                      key="cq_codi", placeholder="Escriu aquí el codi",
+                      on_change=_cq_entra_si_complet)
         st.button("🚀 ENTRAR", key="cq_entra", use_container_width=True, on_click=_cq_entra)
         if ss.cq_error:
             st.error(ss.cq_error)

@@ -57,8 +57,8 @@ with sync_playwright() as p:
         j.goto(URL); espera(j, ".st-key-home_Concurs button"); time.sleep(1)
         j.locator(".st-key-home_Concurs button").first.click(); espera(j, ".st-key-cq_rol_j button")
         j.locator(".st-key-cq_rol_j button").first.click(); espera(j, ".st-key-cq_entra button")
-        j.locator("input[aria-label*='Codi']").first.fill(pin); j.keyboard.press("Enter"); time.sleep(0.8)
-        j.locator(".st-key-cq_entra button").first.click(); espera(j, ".cq-jo")
+        j.locator("input[aria-label*='Codi']").first.fill(pin); j.keyboard.press("Enter")
+        espera(j, ".cq-jo")      # amb Intro ja entra, sense haver de premer ENTRAR
         print(f"nen {k} ({eng}):", text(j, ".cq-jo"))
         nens.append((nav, j))
     t0 = time.time()

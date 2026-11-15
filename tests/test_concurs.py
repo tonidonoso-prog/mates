@@ -47,9 +47,9 @@ nens = []
 for _ in range(2):
     j = nou()
     j.button(key="cq_rol_j").click(); run(j)
-    j.text_input(key="cq_codi").set_value(pin); run(j)
-    j.button(key="cq_entra").click(); run(j)
+    j.text_input(key="cq_codi").set_value(pin); run(j)    # amb Intro ja entra, sense el boto
     assert j.session_state.conc_pin == pin
+    assert "cq_entra" not in [b.key for b in j.button]
     assert "JA HI ETS" in html(j)
     nens.append(j)
 avatars = [re.search(r"cq-jo'>(.+?) ·", html(j)).group(1) for j in nens]
@@ -61,7 +61,9 @@ x = nou()
 x.button(key="cq_rol_j").click(); run(x)
 x.text_input(key="cq_codi").set_value("0000"); run(x)
 x.button(key="cq_entra").click(); run(x)
-assert x.session_state.conc_pin == "" and any("no existeix" in e.value for e in x.error)
+# el text d'exemple no ha de semblar un codi
+assert not any(ch.isdigit() for ch in x.text_input(key="cq_codi").placeholder)
+assert x.session_state.conc_pin == "" and any("cap partida amb el codi 0000" in e.value for e in x.error)
 print("codi dolent: rebutjat")
 
 run(m)
@@ -114,7 +116,6 @@ print("final: la pantalla gran nomes dona el total de la classe; cada nen veu el
 y = nou()
 y.button(key="cq_rol_j").click(); run(y)
 y.text_input(key="cq_codi").set_value(pin); run(y)
-y.button(key="cq_entra").click(); run(y)
 assert any("acabat" in e.value for e in y.error)
 print("partida acabada: no s'hi pot entrar")
 print("TOT OK")
