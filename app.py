@@ -1,4 +1,7 @@
+import copy
 import hashlib
+import threading
+import uuid
 import urllib.request
 import streamlit as st
 import streamlit.components.v1 as components
@@ -22,9 +25,10 @@ BLOCKS = [
     ("🔠", "PENJAT", "Penjat", "Endevina la paraula lletra a lletra"),
     ("🎨", "COLOREJA", "Colors", "Pinta més de 100 dibuixos amb la paleta"),
     ("👾", "MONSTRE GOLUT", "Golut", "Dona-li els plats que fan el seu número"),
+    ("🎯", "CONCURS", "Concurs", "Preguntes en directe per a tota la classe"),
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
-SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
+SENSE_NIVELL = ("Lletres", "Colors", "Concurs")   # blocs sense Facil/Normal/Dificil
 # nom que es veu a la capcalera (la clau interna es curta: Calcul, Sopa...)
 NOM_BLOC = {block: label for _, label, block, _ in BLOCKS}
 
@@ -623,6 +627,254 @@ def genera_golut(diff, op, evita=()):
     raise RuntimeError("No s'ha pogut generar el monstre")
 
 
+# ======================================================================= CONCURS
+# Joc de preguntes en directe per a tota la classe (15 nov 2026). El mestre/a crea una
+# partida i projecta el codi; els nens hi entren des de la tauleta i responen amb quatre
+# botons de colors. SENSE classificacio ni podi: el Toni no vol competicio entre nens,
+# aixi que la pantalla gran nomes ensenya resultats de TOTA la classe i cada nen veu
+# els seus punts nomes a la seva tauleta. Els nens no escriuen cap nom: tenen un avatar.
+#
+# Les partides viuen a la memoria del servidor de Streamlit (st.cache_resource es
+# compartit per totes les sessions de l'app): no cal cap base de dades ni el hosting.
+# Es perden si l'app es reinicia, cosa que per a una partida en directe no importa.
+CONCURS_TEMES = [("🎲 BARREJA", "barreja"), ("➕ SUMES", "sumes"), ("➖ RESTES", "restes"),
+                 ("✖️ TAULES", "taules"), ("💡 CÀLCUL MENTAL", "calcul"),
+                 ("🐾 ANIMALS", "animals"), ("🔤 LLETRA QUE FALTA", "lletra")]
+# formes i colors propis (no els de cap joc comercial)
+CONCURS_FORMES = [("★", "#8854D0", "#5F3A99"), ("●", "#FA8231", "#B85A1C"),
+                  ("▲", "#0FB9B1", "#0A817B"), ("■", "#EB3B8F", "#A82563")]
+CONCURS_AVATARS = [("🐼", "PANDA"), ("🦒", "GIRAFA"), ("🐸", "GRANOTA"), ("🦊", "GUINEU"),
+                   ("🐨", "COALA"), ("🐯", "TIGRE"), ("🦁", "LLEÓ"), ("🐧", "PINGÜÍ"),
+                   ("🐬", "DOFÍ"), ("🦉", "MUSSOL"), ("🐢", "TORTUGA"), ("🐙", "POP"),
+                   ("🦄", "UNICORN"), ("🐝", "ABELLA"), ("🦋", "PAPALLONA"), ("🐰", "CONILL"),
+                   ("🐻", "OS"), ("🐵", "MICO"), ("🐘", "ELEFANT"), ("🦓", "ZEBRA")]
+# colors que no canvien amb el genere (la girafa lila, el tigre lila)
+CONCURS_COLORS = ["LILA", "ROSA", "TARONJA", "TURQUESA", "CREMA"]
+# "Quina lletra falta?": cap opcio falsa pot formar una altra paraula (S_L: SAL tambe
+# valdria) ni una paraula lletja. Paraules curtes molt comunes + les de les altres llistes.
+CONCURS_PARAULES_COMUNES = set("""
+SAL SOL SUL MAR MOR MUR PAL PEL PIL POL GOL GEL GAL BOL COL CEL MEL VOL FIL FAL FEL VEL
+NAS NOS NUS PAS PES POS PUS GAT GOT GIT MAT MOT MIT RAT ROT PAT POT PIT BOT BAT BIT
+DIT DAT FET FAT FIT FOT LLIT LLET LLAT CAP COP CUP SAP SOP MAL MEL MIL MOL CAR COR CUR
+PAN PEN PIN PON PUN PAU PEU POU BOU NOU NAU SOU SEU CEU MEU TEU TOU VEU VAU RIU REU
+CASA COSA CUSA MASA MESA MOSA ROSA RASA BASE BOSC BASC RODA RADA RIDA PILA PALA POLA PULA
+BOLA BALA BELA GOMA GAMA COMA CAMA FAMA FUMA LLUNA LLANA TAULA TEULA PORTA PARTA POMA
+PEIX PIXA GALL GOLL TREN TRON NENA NANA NONA VACA VECA RATA ROTA MICO MACO MOCO MOTO
+""".split())
+CONCURS_PARAULES_LLETGES = set("MORO PUTA PUTO CACA POLLA PITO CULO MEAR MERDA TONTO TONTA".split())
+CONCURS_MAX_JUGADORS = 40
+CONCURS_MAX_SALES = 30
+CONCURS_VIDA = 3 * 3600            # una sala sense moviment desapareix al cap de 3 h
+
+
+def _opcions_numeriques(ans):
+    """La bona i tres d'enganyoses a prop (mai negatives ni repetides)."""
+    pool = [ans + d for d in (-10, -5, -2, -1, 1, 2, 5, 10) if ans + d >= 0]
+    random.shuffle(pool)
+    falses = []
+    for v in sorted(pool, key=lambda v: abs(v - ans) + random.random() * 4):
+        if v != ans and v not in falses:
+            falses.append(v)
+        if len(falses) == 3:
+            break
+    return [str(ans)] + [str(v) for v in falses]
+
+
+def concurs_pregunta(tema, diff):
+    """{text, emoji, opcions (4), correcta (index)}. Tot generat: mai s'acaben."""
+    if tema == "barreja":
+        tema = random.choice([t for _, t in CONCURS_TEMES if t != "barreja"])
+    emoji = ""
+    if tema in ("sumes", "restes"):
+        text, ans = make_math(diff, "Sumes" if tema == "sumes" else "Restes")
+        text, ops = f"{text} = ?", _opcions_numeriques(ans)
+    elif tema == "taules":
+        taules = {"Fàcil": (2, 5, 10), "Normal": (2, 3, 4, 5, 6, 7, 8, 9), "Difícil": (6, 7, 8, 9)}[diff]
+        a, b = random.choice(taules), random.randint(2, 10)
+        a, b = (a, b) if random.random() < 0.5 else (b, a)
+        text = f"{a} × {b} = ?"
+        # enganyoses de la mateixa taula: el veí de dalt i el de baix
+        ans, ops = a * b, [str(a * b)]
+        for v in random.sample([a * (b - 1), a * (b + 1), (a - 1) * b, (a + 1) * b, a * b + 1, a * b - 2], 6):
+            if v > 0 and str(v) not in ops:
+                ops.append(str(v))
+            if len(ops) == 4:
+                break
+    elif tema == "calcul":
+        kind = random.choice([k for k in CALCUL_ALL if k != "Piràmide"])
+        text, ans, _ = make_calcul(diff, kind)
+        text, ops = text.replace(" x ", " × "), _opcions_numeriques(ans)
+    elif tema == "animals":
+        animals = [(e, n) for e, n in DIBUIXOS if not e.startswith("data:")][:40]
+        tria = random.sample(animals, 4)
+        emoji, text = tria[0][0], "QUIN ANIMAL ÉS?"
+        ops = [n for _, n in tria]
+    else:   # lletra que falta
+        lo, hi = PENJAT_CFG[diff]["llarg"]
+        paraules = [(w, c) for c, ws in PENJAT_PARAULES.items() for w in ws if lo <= len(w) <= hi]
+        while True:
+            w, cat = random.choice(paraules)
+            llocs = [i for i in range(1, len(w)) if w[i] in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"]
+            if llocs:
+                break
+        conegudes = (CONCURS_PARAULES_COMUNES | CONCURS_PARAULES_LLETGES
+                     | {x for ws in PENJAT_PARAULES.values() for x in ws}
+                     | {x for ws in SOPA_WORDS.values() for x in ws})
+        random.shuffle(llocs)
+        for i in llocs:
+            lletra = w[i]
+            grup = "AEIOU" if lletra in "AEIOU" else "BCDFGLMNPRSTV"
+            falses = [x for x in grup if x != lletra and w[:i] + x + w[i + 1:] not in conegudes]
+            if len(falses) >= 3:
+                break
+        else:
+            return concurs_pregunta("lletra", diff)     # aquesta paraula no dona joc: una altra
+        ops = [lletra] + random.sample(falses, 3)
+        text = "QUINA LLETRA FALTA?  " + " ".join(w[:i] + "_" + w[i + 1:]) + f"  ({cat})"
+    correcta = ops[0]
+    random.shuffle(ops)
+    return {"text": text, "emoji": emoji, "opcions": ops, "correcta": ops.index(correcta)}
+
+
+def concurs_preguntes(tema, diff, n):
+    out, vistes = [], set()
+    for _ in range(n * 30):
+        q = concurs_pregunta(tema, diff)
+        clau = q["text"] + q["emoji"]
+        if clau in vistes or len(set(q["opcions"])) < 4:
+            continue
+        vistes.add(clau)
+        out.append(q)
+        if len(out) == n:
+            break
+    return out
+
+
+@st.cache_resource
+def _concurs():
+    """Magatzem de partides compartit per TOTES les sessions (mateix proces)."""
+    return {"lock": threading.Lock(), "sales": {}}
+
+
+def _neteja_sales(sales):
+    ara = time.time()
+    for pin in [p for p, sa in sales.items() if ara - sa["mogut"] > CONCURS_VIDA]:
+        del sales[pin]
+
+
+def concurs_crea(tema, diff, n, segons):
+    """Crea una sala i en torna el codi de 4 xifres (o None si n'hi ha massa)."""
+    c = _concurs()
+    with c["lock"]:
+        _neteja_sales(c["sales"])
+        if len(c["sales"]) >= CONCURS_MAX_SALES:
+            return None
+        while True:
+            pin = str(random.randint(1000, 9999))
+            if pin not in c["sales"]:
+                break
+        c["sales"][pin] = {
+            "pin": pin, "tema": tema, "nivell": diff, "segons": segons, "fase": "espera",
+            "preguntes": concurs_preguntes(tema, diff, n), "idx": 0, "t0": 0.0,
+            "jugadors": {}, "mogut": time.time(),
+        }
+        return pin
+
+
+def _actualitza(sa):
+    """Tanca la pregunta si s'ha acabat el temps o ja ha respost tothom."""
+    if sa["fase"] != "pregunta":
+        return
+    temps_fora = time.time() - sa["t0"] >= sa["segons"]
+    tots = sa["jugadors"] and all(sa["idx"] in j["respostes"] for j in sa["jugadors"].values())
+    if temps_fora or tots:
+        sa["fase"] = "resultat"
+
+
+def concurs_estat(pin):
+    """Copia de la sala (per pintar-la sense bloquejar les altres sessions)."""
+    c = _concurs()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return None
+        _actualitza(sa)
+        return copy.deepcopy(sa)
+
+
+def concurs_entra(pin, pid):
+    """Un nen entra a la sala: li toca un avatar lliure. Torna (ok, missatge)."""
+    c = _concurs()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return False, "Aquest codi no existeix. Revisa'l amb el mestre o la mestra."
+        if pid in sa["jugadors"]:
+            return True, ""
+        if sa["fase"] == "final":
+            return False, "Aquesta partida ja s'ha acabat."
+        if len(sa["jugadors"]) >= CONCURS_MAX_JUGADORS:
+            return False, "La partida ja està plena."
+        agafats = {(j["emoji"], j["nom"]) for j in sa["jugadors"].values()}
+        lliures = [(e, f"{n} {col}") for e, n in CONCURS_AVATARS for col in CONCURS_COLORS
+                   if (e, f"{n} {col}") not in agafats]
+        emoji, nom = random.choice(lliures)
+        sa["jugadors"][pid] = {"emoji": emoji, "nom": nom, "punts": 0, "respostes": {}}
+        sa["mogut"] = time.time()
+        return True, ""
+
+
+def concurs_respon(pin, pid, opcio):
+    """Torna els punts guanyats (0 si falla) o None si ja no es pot respondre."""
+    c = _concurs()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return None
+        _actualitza(sa)
+        j = sa["jugadors"].get(pid)
+        if sa["fase"] != "pregunta" or not j or sa["idx"] in j["respostes"]:
+            return None
+        t = time.time() - sa["t0"]
+        encert = opcio == sa["preguntes"][sa["idx"]]["correcta"]
+        # mes rapid, mes punts: de 1000 (a l'instant) a 500 (just al final)
+        punts = round(1000 * (1 - min(t, sa["segons"]) / (2 * sa["segons"]))) if encert else 0
+        j["respostes"][sa["idx"]] = {"opcio": opcio, "temps": round(t, 1), "punts": punts}
+        j["punts"] += punts
+        sa["mogut"] = time.time()
+        _actualitza(sa)
+        return punts
+
+
+def concurs_avanca(pin):
+    """Boto del mestre: comencar, tancar la pregunta abans d'hora o passar a la seguent."""
+    c = _concurs()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return
+        if sa["fase"] in ("espera", "resultat"):
+            if sa["fase"] == "resultat":
+                sa["idx"] += 1
+            if sa["idx"] >= len(sa["preguntes"]):
+                sa["fase"] = "final"
+            else:
+                sa["fase"], sa["t0"] = "pregunta", time.time()
+        elif sa["fase"] == "pregunta":
+            sa["fase"] = "resultat"
+        sa["mogut"] = time.time()
+
+
+def concurs_resum(sa, idx):
+    """Quants nens han triat cada opcio a la pregunta idx, i quants l'han encertada."""
+    vots = [0, 0, 0, 0]
+    for j in sa["jugadors"].values():
+        r = j["respostes"].get(idx)
+        if r:
+            vots[r["opcio"]] += 1
+    return vots, vots[sa["preguntes"][idx]["correcta"]]
+
+
 # Carrera de lectura: (segons de base, segons per lletra) que es consideren "bon ritme"
 LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.5, 0.52), "Difícil": (1.5, 0.47)}
 
@@ -778,6 +1030,53 @@ def local_css():
       .cal-dia .est { font-size: 1rem; }
       .cal-cap { font-size: 0.62rem; }
       .med-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    /* ---- concurs en directe ---- */
+    .st-key-conc_op_0 div.stButton > button { background: #8854D0 !important; box-shadow: 0 7px 0 #5F3A99 !important; min-height: 118px !important; font-size: 1.7rem !important; }
+    .st-key-conc_op_1 div.stButton > button { background: #FA8231 !important; box-shadow: 0 7px 0 #B85A1C !important; min-height: 118px !important; font-size: 1.7rem !important; }
+    .st-key-conc_op_2 div.stButton > button { background: #0FB9B1 !important; box-shadow: 0 7px 0 #0A817B !important; min-height: 118px !important; font-size: 1.7rem !important; }
+    .st-key-conc_op_3 div.stButton > button { background: #EB3B8F !important; box-shadow: 0 7px 0 #A82563 !important; min-height: 118px !important; font-size: 1.7rem !important; }
+    .cq-pin { font-family: 'Bungee', cursive; font-size: 5rem; color: #EE5253; text-align: center; line-height: 1;
+              background: #FFF4CC; border: 6px solid #F7B731; border-radius: 26px; padding: 14px 10px; margin: 6px auto;
+              max-width: 420px; letter-spacing: 10px; }
+    .cq-info { text-align: center; font-size: 1.15rem; color: #2D3436; }
+    .cq-avatars { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 10px 0; }
+    .cq-av { background: white; border: 2px solid #DDD; border-radius: 30px; padding: 4px 12px; font-weight: 700;
+             font-size: 0.95rem; }
+    .cq-cap { display: flex; justify-content: space-between; align-items: center; font-family: 'Bungee', cursive;
+              color: #636E72; font-size: 1rem; }
+    .cq-temps { font-family: 'Bungee', cursive; font-size: 2.4rem; color: white; background: #8854D0; border-radius: 50%;
+                width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; }
+    .cq-temps.poc { background: #EB3B5A; }
+    .cq-preg { font-family: 'Bungee', cursive; font-size: 2.6rem; color: #2D3436; text-align: center; margin: 10px 0;
+               line-height: 1.2; }
+    .cq-emoji { font-size: 6rem; text-align: center; line-height: 1.1; }
+    .cq-ops { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .cq-op { border-radius: 16px; color: white; font-family: 'Bungee', cursive; font-size: 1.9rem; padding: 18px 16px;
+             display: flex; align-items: center; gap: 14px; min-height: 86px; transition: opacity .3s; }
+    .cq-op .forma { font-size: 2.2rem; }
+    .cq-op .vots { margin-left: auto; font-size: 1.3rem; background: rgba(255,255,255,.25); border-radius: 12px;
+                   padding: 2px 10px; }
+    .cq-op.apagada { opacity: .28; }
+    .cq-op.bona { outline: 6px solid #20BF6B; }
+    .cq-gran { font-family: 'Bungee', cursive; font-size: 2.2rem; text-align: center; margin: 14px 0 4px 0; }
+    .cq-jo { text-align: center; font-family: 'Bungee', cursive; font-size: 1.4rem; color: #2D3436; }
+    .cq-feedback { text-align: center; font-family: 'Bungee', cursive; font-size: 2.6rem; padding: 24px 10px;
+                   border-radius: 24px; color: white; margin: 10px 0; }
+    .cq-feedback.si { background: #20BF6B; } .cq-feedback.no { background: #EB3B5A; }
+    .cq-feedback.espera { background: #8854D0; font-size: 1.6rem; }
+    @media (max-width: 767px) {
+      .cq-pin { font-size: 3.2rem; letter-spacing: 6px; }
+      .cq-preg { font-size: 1.5rem; }
+      .cq-emoji { font-size: 4rem; }
+      .cq-op { font-size: 1.1rem; padding: 10px; min-height: 60px; gap: 8px; }
+      .cq-op .forma { font-size: 1.4rem; }
+      .cq-temps { width: 58px; height: 58px; font-size: 1.6rem; }
+      .cq-feedback { font-size: 1.7rem; }
+      .st-key-conc_op_0 div.stButton > button { min-height: 96px !important; font-size: 1.25rem !important; }
+      .st-key-conc_op_1 div.stButton > button { min-height: 96px !important; font-size: 1.25rem !important; }
+      .st-key-conc_op_2 div.stButton > button { min-height: 96px !important; font-size: 1.25rem !important; }
+      .st-key-conc_op_3 div.stButton > button { min-height: 96px !important; font-size: 1.25rem !important; }
     }
     #MainMenu, footer, header {visibility: hidden;}
     </style>
@@ -1883,6 +2182,11 @@ def new_problem():
         ss.sopa = genera_sopa(diff)
         ss.sopa_n += 1                     # canvia la clau del component: graella nova de zero
         return
+    if block == "Concurs":
+        ss.problem_text = "concurs"
+        if not ss.conc_pid:
+            ss.conc_pid = uuid.uuid4().hex     # identifica aquesta tauleta dins la partida
+        return
     if block == "Golut":
         ss.problem_text = "golut"
         abans = ss.golut["objectiu"] if ss.golut else None
@@ -1951,7 +2255,7 @@ DEFAULTS = {
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
     'base': None, 'nom_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
-    'sopa': None, 'sopa_n': 0, 'golut': None, 'golut_n': 0, 'golut_op': 'suma', 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
+    'sopa': None, 'sopa_n': 0, 'conc_rol': None, 'conc_pin': '', 'conc_pid': '', 'cq_error': '', 'cq_desat': '', 'golut': None, 'golut_n': 0, 'golut_op': 'suma', 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -2141,7 +2445,9 @@ def carrega_base():
         ss.db_error = str(e)
 
 
-def register(correct):
+def register(correct, desa=True):
+    """desa=False: nomes a la sessio (el concurs desa un sol cop al final, perque 25 nens
+    responent alhora farien una rafaga de peticions al hosting, que ja ha bloquejat la IP)."""
     ss = st.session_state
     if correct:
         ss.punts += 1; ss.encerts += 1; ss.ratxa += 1
@@ -2149,7 +2455,8 @@ def register(correct):
     else:
         ss.errors += 1; ss.ratxa = 0
     marca_avui()
-    sync_progres()
+    if desa:
+        sync_progres()
 
 def advance_repte(correct):
     """Compta l'exercici. El nivell el mana el nen, no puja ni baixa sol."""
@@ -2187,6 +2494,218 @@ def check_answer(value):
 
 if not st.session_state.problem_text and st.session_state.current_block not in ("Home", "Calendari"):
     new_problem()
+
+# -------------------------------------------------------------- CONCURS: PANTALLES
+def _cq_ops_html(q, vots=None, mostra_bona=False):
+    caixes = []
+    for i, (forma, color, _) in enumerate(CONCURS_FORMES):
+        cls = "cq-op"
+        if mostra_bona:
+            cls += " bona" if i == q["correcta"] else " apagada"
+        v = f"<span class='vots'>{vots[i]}</span>" if vots is not None else ""
+        caixes.append(f"<div class='{cls}' style='background:{color};'><span class='forma'>{forma}</span>"
+                      f"<span>{q['opcions'][i]}</span>{v}</div>")
+    return f"<div class='cq-ops'>{''.join(caixes)}</div>"
+
+
+def _cq_pregunta_html(q):
+    emoji = f"<div class='cq-emoji'>{q['emoji']}</div>" if q["emoji"] else ""
+    return f"{emoji}<div class='cq-preg'>{q['text']}</div>"
+
+
+@st.fragment(run_every=1)
+def concurs_mestre():
+    """Pantalla gran (projector o tele). Es refresca sola cada segon."""
+    ss = st.session_state
+    sa = concurs_estat(ss.conc_pin)
+    if sa is None:
+        st.warning("Aquesta partida ja no existeix (el servidor s'ha reiniciat o ha passat massa estona).")
+        if st.button("🔁 CREAR-NE UNA DE NOVA", key="cq_m_nova0", use_container_width=True):
+            ss.conc_rol, ss.conc_pin = None, ""
+            st.rerun(scope="app")
+        return
+    jug = list(sa["jugadors"].values())
+    n_q = len(sa["preguntes"])
+    if sa["fase"] == "espera":
+        st.markdown("<div class='cq-info'>Entreu al <b>CONCURS</b> des de la tauleta i escriviu aquest codi:</div>"
+                    f"<div class='cq-pin'>{sa['pin']}</div>"
+                    f"<div class='cq-info'>{len(jug)} {'jugador connectat' if len(jug) == 1 else 'jugadors connectats'}</div>",
+                    unsafe_allow_html=True)
+        if jug:
+            st.markdown("<div class='cq-avatars'>" + "".join(
+                f"<span class='cq-av'>{j['emoji']} {j['nom']}</span>" for j in jug) + "</div>", unsafe_allow_html=True)
+        st.button("▶️ COMENÇAR", key="cq_m_start", use_container_width=True, disabled=not jug,
+                  on_click=concurs_avanca, args=(sa["pin"],))
+        return
+    if sa["fase"] == "final":
+        total = sum(j["punts"] for j in jug)
+        respostes = [r for j in jug for r in j["respostes"].values()]
+        encerts = sum(1 for r in respostes if r["punts"] > 0)
+        pct = round(100 * encerts / len(respostes)) if respostes else 0
+        dificils = sorted(range(n_q), key=lambda i: concurs_resum(sa, i)[1])
+        st.markdown("<div class='cq-gran' style='color:#EE5253;'>🎉 FI DEL CONCURS! 🎉</div>"
+                    f"<div class='cq-gran'>ENTRE TOTS: {total:,} PUNTS".replace(",", ".") + "</div>"
+                    f"<div class='cq-info'>La classe ha encertat el <b>{pct}%</b> de les respostes. "
+                    "Molt bona feina, equip! 💪</div>", unsafe_allow_html=True)
+        if n_q and jug:
+            q = sa["preguntes"][dificils[0]]
+            st.markdown(f"<div class='cq-info' style='margin-top:10px;'>La que més ha costat: "
+                        f"<b>{q['emoji']} {q['text']}</b> → {q['opcions'][q['correcta']]}</div>",
+                        unsafe_allow_html=True)
+        if st.button("🔁 NOVA PARTIDA", key="cq_m_nova", use_container_width=True):
+            ss.conc_rol, ss.conc_pin = "mestre", ""
+            st.rerun(scope="app")
+        return
+    q = sa["preguntes"][sa["idx"]]
+    respostos = sum(1 for j in jug if sa["idx"] in j["respostes"])
+    if sa["fase"] == "pregunta":
+        queda = max(0, int(round(sa["segons"] - (time.time() - sa["t0"]))))
+        st.markdown(f"<div class='cq-cap'><span>PREGUNTA {sa['idx'] + 1} DE {n_q}</span>"
+                    f"<span class='cq-temps{' poc' if queda <= 5 else ''}'>{queda}</span>"
+                    f"<span>{respostos} DE {len(jug)} HAN RESPOST</span></div>"
+                    + _cq_pregunta_html(q) + _cq_ops_html(q), unsafe_allow_html=True)
+        st.button("⏭️ JA N'HI HA PROU", key="cq_m_tanca", use_container_width=True,
+                  on_click=concurs_avanca, args=(sa["pin"],))
+        return
+    # resultat
+    vots, bons = concurs_resum(sa, sa["idx"])
+    total = sum(j["punts"] for j in jug)
+    frase = ("TOTHOM L'HA ENCERTADA! 🎉" if jug and bons == len(jug) else
+             f"{bons} DE {len(jug)} L'HAN ENCERTADA!" if bons else "AQUESTA COSTAVA! 💪")
+    st.markdown(f"<div class='cq-cap'><span>PREGUNTA {sa['idx'] + 1} DE {n_q}</span>"
+                f"<span>PUNTS DE LA CLASSE: {total:,}</span></div>".replace(",", ".")
+                + _cq_pregunta_html(q) + _cq_ops_html(q, vots, mostra_bona=True)
+                + f"<div class='cq-gran' style='color:#20BF6B;'>{frase}</div>", unsafe_allow_html=True)
+    ultima = sa["idx"] + 1 >= n_q
+    st.button("🏁 VEURE EL RESULTAT" if ultima else "▶️ SEGÜENT PREGUNTA", key="cq_m_seg",
+              use_container_width=True, on_click=concurs_avanca, args=(sa["pin"],))
+
+
+def _cq_respon(pin, opcio):
+    ss = st.session_state
+    punts = concurs_respon(pin, ss.conc_pid, opcio)
+    if punts is not None:
+        register(punts > 0, desa=False)     # medalla del dia ara; el progres es desa al final
+
+
+@st.fragment(run_every=1)
+def concurs_jugador():
+    """Tauleta del nen: nomes els seus punts, mai els dels altres."""
+    ss = st.session_state
+    sa = concurs_estat(ss.conc_pin)
+    if sa is None or ss.conc_pid not in (sa or {}).get("jugadors", {}):
+        st.warning("Aquesta partida ja no existeix. Demana un codi nou al mestre o la mestra.")
+        if st.button("🔙 TORNAR", key="cq_j_torna0", use_container_width=True):
+            ss.conc_rol, ss.conc_pin = None, ""
+            st.rerun(scope="app")
+        return
+    jo = sa["jugadors"][ss.conc_pid]
+    st.markdown(f"<div class='cq-jo'>{jo['emoji']} {jo['nom']} · ⭐ {jo['punts']:,}</div>".replace(",", "."),
+                unsafe_allow_html=True)
+    if sa["fase"] == "espera":
+        st.markdown("<div class='cq-feedback espera'>JA HI ETS! 🎉<br>Mira la pantalla gran:<br>"
+                    "començarem de seguida</div>", unsafe_allow_html=True)
+        return
+    if sa["fase"] == "final":
+        resp = jo["respostes"].values()
+        bons = sum(1 for r in resp if r["punts"] > 0)
+        if ss.cq_desat != sa["pin"]:          # un sol desat per partida i nen
+            ss.cq_desat = sa["pin"]
+            sync_progres()
+        st.markdown(f"<div class='cq-feedback si'>FI DEL CONCURS!<br>Has encertat {bons} de "
+                    f"{len(sa['preguntes'])}<br>⭐ {jo['punts']:,} punts</div>".replace(",", "."),
+                    unsafe_allow_html=True)
+        if st.button("🔙 SORTIR", key="cq_j_surt", use_container_width=True):
+            ss.conc_rol, ss.conc_pin = None, ""
+            st.rerun(scope="app")
+        return
+    q = sa["preguntes"][sa["idx"]]
+    meva = jo["respostes"].get(sa["idx"])
+    if sa["fase"] == "pregunta" and meva is None:
+        queda = max(0, int(round(sa["segons"] - (time.time() - sa["t0"]))))
+        st.markdown(f"<div class='cq-cap'><span>PREGUNTA {sa['idx'] + 1} DE {len(sa['preguntes'])}</span>"
+                    f"<span class='cq-temps{' poc' if queda <= 5 else ''}'>{queda}</span></div>"
+                    + _cq_pregunta_html(q), unsafe_allow_html=True)
+        for fila in ((0, 1), (2, 3)):
+            cols = st.columns(2)
+            for col, i in zip(cols, fila):
+                forma = CONCURS_FORMES[i][0]
+                col.button(f"{forma}  {q['opcions'][i]}", key=f"conc_op_{i}", use_container_width=True,
+                           on_click=_cq_respon, args=(sa["pin"], i))
+        return
+    if sa["fase"] == "pregunta":     # ja ha respost: esperem els altres
+        st.markdown("<div class='cq-feedback espera'>RESPOSTA ENVIADA! ✅<br>Esperem la resta...</div>",
+                    unsafe_allow_html=True)
+        return
+    # resultat
+    if meva and meva["punts"] > 0:
+        st.markdown(f"<div class='cq-feedback si'>CORRECTE! 🎉<br>+{meva['punts']} punts</div>",
+                    unsafe_allow_html=True)
+    else:
+        bona = q["opcions"][q["correcta"]]
+        forma = CONCURS_FORMES[q["correcta"]][0]
+        titol = "ERA AQUESTA:" if meva else "S'HA ACABAT EL TEMPS!<br>ERA AQUESTA:"
+        st.markdown(f"<div class='cq-feedback no'>{titol}<br>{forma} {bona}</div>", unsafe_allow_html=True)
+
+
+def _cq_crea():
+    ss = st.session_state
+    pin = concurs_crea(dict(CONCURS_TEMES)[ss.cq_tema], ss.cq_nivell, ss.cq_n, ss.cq_seg)
+    if pin:
+        ss.conc_pin, ss.cq_error = pin, ""
+    else:
+        ss.cq_error = "Ara mateix hi ha massa partides obertes. Torna-ho a provar d'aquí a una estona."
+
+
+def _cq_entra():
+    ss = st.session_state
+    codi = "".join(ch for ch in (ss.cq_codi or "") if ch.isdigit())
+    ok, msg = concurs_entra(codi, ss.conc_pid) if len(codi) == 4 else (False, "El codi té 4 números.")
+    if ok:
+        ss.conc_pin, ss.cq_error = codi, ""
+    else:
+        ss.cq_error = msg
+
+
+def concurs_inici():
+    """Primer pas: triar si ets el mestre (crea la partida) o un jugador (tens un codi)."""
+    ss = st.session_state
+    if not ss.conc_pid:
+        ss.conc_pid = uuid.uuid4().hex
+    if ss.conc_rol is None:
+        st.markdown("<div class='cq-info'>Un joc de preguntes per jugar tota la classe alhora: "
+                    "la pantalla gran fa les preguntes i cadascú respon des de la seva tauleta.</div>",
+                    unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        c1.button("📺 SÓC EL MESTRE / LA MESTRA", key="cq_rol_m", use_container_width=True,
+                  on_click=lambda: ss.update(conc_rol="mestre", conc_pin=""))
+        c2.button("🙋 VULL JUGAR", key="cq_rol_j", use_container_width=True,
+                  on_click=lambda: ss.update(conc_rol="jugador", conc_pin=""))
+        return
+    if ss.conc_rol == "mestre" and not ss.conc_pin:
+        st.selectbox("Tema", [t for t, _ in CONCURS_TEMES], key="cq_tema")
+        st.radio("Nivell", [d for d, _ in DIFFS], horizontal=True, key="cq_nivell")
+        c1, c2 = st.columns(2)
+        c1.select_slider("Preguntes", [5, 10, 15, 20], value=10, key="cq_n")
+        c2.select_slider("Segons per pregunta", [10, 15, 20, 30, 45], value=20, key="cq_seg")
+        st.button("✨ CREAR LA PARTIDA", key="cq_crea", use_container_width=True, on_click=_cq_crea)
+        if ss.cq_error:
+            st.error(ss.cq_error)
+        st.button("🔙 TORNAR", key="cq_m_torna", on_click=lambda: ss.update(conc_rol=None, cq_error=""))
+        return
+    if ss.conc_rol == "mestre":
+        concurs_mestre()
+        return
+    if not ss.conc_pin:
+        st.text_input("Codi de la partida (el que surt a la pantalla gran)", max_chars=4,
+                      key="cq_codi", placeholder="1234")
+        st.button("🚀 ENTRAR", key="cq_entra", use_container_width=True, on_click=_cq_entra)
+        if ss.cq_error:
+            st.error(ss.cq_error)
+        st.button("🔙 TORNAR", key="cq_j_torna", on_click=lambda: ss.update(conc_rol=None, cq_error=""))
+        return
+    concurs_jugador()
+
 
 # ----------------------------------------------------------------- RENDER
 def render_header():
@@ -2344,7 +2863,7 @@ else:
         active += [f"ctl_gop_{ss.golut_op}", f"sb_gop_{ss.golut_op}"]
     if ss.current_block == "Lletres":
         active = ["ctl_set_lletres"] if ss.lletra_set == "Lletres" else ["ctl_set_numeros"]
-    if ss.current_block == "Colors":
+    if ss.current_block in ("Colors", "Concurs"):
         active = []
     st.markdown("<style>" + "".join(
         f".st-key-{k} div.stButton > button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
@@ -2361,6 +2880,9 @@ else:
                            on_click=set_lletra_set, args=("Lletres",))
             cols[2].button("🔢 NÚMEROS", key="ctl_set_numeros", use_container_width=True,
                            on_click=set_lletra_set, args=("Números",))
+        elif ss.current_block == "Concurs":
+            st.columns(1)[0].button("🏠", key="ctl_home", use_container_width=True,
+                                    on_click=lambda: st.session_state.update(current_block="Home"))
         elif ss.current_block == "Colors":
             # Nomes icones: al mobil "ANTERIOR" i "SEGÜENT" es partien en dues linies.
             # Sense help=: el tooltip embolcalla el boto i perd l'estil vermell de l'app.
@@ -2431,6 +2953,8 @@ else:
         elif ss.current_block == "Sopa":
             st.markdown(f"<h3>SOPA DE LLETRES • {ss.diff.upper()} • TROBA {len(ss.sopa['words'])} PARAULES</h3>",
                         unsafe_allow_html=True)
+        elif ss.current_block == "Concurs":
+            st.markdown("<h3>🎯 CONCURS</h3>", unsafe_allow_html=True)
         elif ss.current_block == "Golut":
             nom_op = dict((o, l.split(" ", 1)[1]) for l, o in GOLUT_OPS)[ss.golut_op]
             st.markdown(f"<h3>MONSTRE GOLUT • {ss.diff.upper()} • {nom_op}</h3>", unsafe_allow_html=True)
@@ -2515,6 +3039,8 @@ else:
             # El clica sol el component quan s'han trobat totes (CSS: invisible)
             st.button("fet", key="sopa_done", on_click=sopa_completada)
             st.button("🔁 NOVA SOPA", key="sopa_nova", use_container_width=True, on_click=new_problem)
+        elif ss.current_block == "Concurs":
+            concurs_inici()
         elif ss.current_block == "Golut":
             golut_component(ss.golut, f"{ss.diff}-{ss.golut_op}-{ss.golut_n}")
             st.button("🔁 UN ALTRE MONSTRE", key="golut_nou", use_container_width=True, on_click=new_problem)
