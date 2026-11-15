@@ -20,7 +20,7 @@ at = run(AppTest.from_file("app.py", default_timeout=60))
 keys = [b.key for b in at.button]
 BLOCS = ("Mates", "Calcul", "Lectura", "Lletres", "Sopa", "Memory", "Penjat", "Colors",
          "Golut", "Concurs", "Repte")
-SENSE_NIVELL = ("Lletres", "Colors", "Concurs")
+SENSE_NIVELL = ("Lletres", "Colors")
 for blk in BLOCS:
     assert f"home_{blk}" in keys, (blk, keys)
 assert "home_cal" in keys and "home_rank" not in keys
