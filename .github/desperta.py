@@ -1,0 +1,21 @@
+"""Entra a l'app com un visitant perque Streamlit Cloud no l'adormi (la fa servir la tasca
+.github/workflows/desperta.yml cada 6 hores). No fa cap exercici: no escriu res enlloc."""
+import time
+
+from playwright.sync_api import sync_playwright
+
+APP = "https://aventura-matematica.streamlit.app"
+with sync_playwright() as p:
+    nav = p.chromium.launch()
+    pg = nav.new_page()
+    pg.goto(APP, timeout=90000)
+    time.sleep(8)
+    boto = pg.get_by_role("button", name="get this app back up")
+    if boto.count():
+        print("Dormia: la desperto")
+        boto.first.click()
+        time.sleep(90)
+    pg.goto(APP + "/~/+/", timeout=90000)
+    pg.wait_for_selector(".st-key-home_Mates button", timeout=180000)
+    print("App desperta i portada carregada")
+    nav.close()

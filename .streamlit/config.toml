@@ -1,0 +1,3 @@
+[server]
+# Les animacions de felicitar (static/festa) es serveixen des de la propia app, sense tercers
+enableStaticServing = true

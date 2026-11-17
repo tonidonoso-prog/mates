@@ -43,13 +43,14 @@ assert at.session_state.current_block == "Calendari"
 at.button(key="cal_home").click()
 run(at)
 
-# privacitat: a la pantalla nomes nom + inicial, i el nom escrit no pot injectar HTML
-# (17-nov-2026, ho va trobar el verificador: la portada ensenyava el cognom sencer)
-pantalla = lambda: " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
-at.text_input(key="nom_input").input("anna pons").run()
-assert "Anna P." in pantalla() and "Pons" not in pantalla(), pantalla()[:300]
-assert at.text_input(key="nom_input").placeholder == "Ex: Anna Pons"
-at.text_input(key="nom_input").input("<u>hack</u> <img src=x>").run()
-assert "<u>" not in pantalla() and "<img src=x" not in pantalla(), pantalla()[:300]
+# privacitat (17-nov-2026, decisio del Toni): enlloc es demana el nom. Qui juga es un numero a
+# l'atzar del dispositiu, i el que va al servidor nomes en porta aquest numero.
+assert not at.text_input, "no hi ha d'haver cap camp per escriure el nom"
+pantalla = " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
+assert "nom i cognom" not in pantalla.lower() and "escriu el teu nom" not in pantalla.lower()
+jug = at.session_state.jugador
+assert len(jug) == 16 and all(x in "0123456789abcdef" for x in jug), jug
 assert "Donoso" not in open("app.py", encoding="utf-8").read()
-print("AppTest tot OK:", len(BLOCS), "blocs + calendari + privacitat del nom")
+gifs = [f for f in os.listdir("static/festa") if f.endswith(".webp")]
+assert len(gifs) >= 40, len(gifs)
+print("AppTest tot OK:", len(BLOCS), "blocs + calendari + sense noms + %d animacions" % len(gifs) + "")

@@ -1,5 +1,4 @@
 import copy
-import html as html_mod
 import hashlib
 import threading
 import uuid
@@ -75,9 +74,9 @@ def slugify(txt):
 REPTE_LEN = 10  # exercicis per sessio
 BASE_DIR = Path(__file__).parent
 
-# Noms: hi juguen menors. Cap nom es desa enlloc (22 i 25 set 2026, decisions del Toni:
-# "mejor esconder nombres" i fora la classificacio, "no quiero competicion"). A la base
-# de dades nomes hi va una clau calculada a partir del nom i el cognom.
+# Cap nom: hi juguen menors i son dades protegides (17 nov 2026, el Toni: "no podemos dar en ningun
+# sitio que escriban el nombre, es confidencial"). Cada mobil o tauleta te un identificador a l'atzar
+# (galeta 'am_dispositiu'); a la base de dades nomes hi van aquest numero, els totals i els dies.
 
 
 @st.cache_resource
@@ -139,9 +138,9 @@ def get_engine():
 BUIT = {"punts": 0, "encerts": 0, "errors": 0, "millor_ratxa": 0, "partides": 0, "dies": []}
 
 
-def db_load(nom):
+def db_load(jugador):
     """Progres d'un nen: totals i els dies que ha jugat ('2026-09-25')."""
-    clau = clau_jugador(nom)
+    clau = jugador if clau_ok(jugador) else ""
     if not clau:
         return dict(BUIT)
     if _api():
@@ -158,11 +157,11 @@ def db_load(nom):
     return fila
 
 
-def db_save(nom, punts, encerts, errors, millor_ratxa, partides):
+def db_save(jugador, punts, encerts, errors, millor_ratxa, partides):
     """Escriu el TOTAL (base d'abans + el d'aquesta sessio). Idempotent.
 
-    No hi viatja cap nom: nomes la clau calculada (no hi ha classificacio, 25 set 2026)."""
-    clau = clau_jugador(nom)
+    No hi viatja cap nom: nomes l'identificador del dispositiu."""
+    clau = jugador if clau_ok(jugador) else ""
     if not clau:
         return
     dades = {"clau": clau, "punts": punts, "encerts": encerts,
@@ -184,9 +183,9 @@ def db_save(nom, punts, encerts, errors, millor_ratxa, partides):
                 VALUES (:c, :p, :e, :x, :r, :g, :t)"""), fila)
 
 
-def db_marca_dia(nom, dia):
-    """Apunta que aquest nen ha fet exercicis el dia 'dia' (text 'AAAA-MM-DD')."""
-    clau = clau_jugador(nom)
+def db_marca_dia(jugador, dia):
+    """Apunta que en aquest dispositiu s'han fet exercicis el dia 'dia' (text 'AAAA-MM-DD')."""
+    clau = jugador if clau_ok(jugador) else ""
     if not clau:
         return
     if _api():
@@ -277,71 +276,46 @@ def marca_avui():
     for m in medalles_guanyades(ss.dies):
         if m[0] not in abans and m[0] != "primer":
             ss.avisos.append((m[1], "NOVA MEDALLA!", m[2]))
-    if ss.nom.strip() and ss.base is not None:
+    if ss.jugador and ss.base is not None:
         try:
-            db_marca_dia(ss.nom, dia)
+            db_marca_dia(ss.jugador, dia)
         except Exception as e:
             ss.db_error = str(e)
 
 
-def normalitza_nom(nom):
-    """Els nens escriuran 'anna pons', 'ANNA PONS' i 'Anna  Pons'. Sense
-    normalitzar serien tres files diferents al rànquing i es repartirien els punts."""
-    return " ".join(w.capitalize() for w in nom.split())
+COOKIE = "am_dispositiu"
 
 
-def nom_public(nom):
-    """'Anna Pons' -> 'Anna P.'  ·  'Anna P.' -> 'Anna P.'  ·  'Anna' -> 'Anna'.
-
-    Es el UNIC nom que surt del navegador cap a la base de dades: el cognom
-    sencer no es desa enlloc, ni tan sols xifrat."""
-    parts = nom.split()
-    if not parts:
-        return ""
-    return parts[0] + (f" {parts[1][0].upper()}." if len(parts) > 1 else "")
+def clau_ok(c):
+    return isinstance(c, str) and len(c) == 16 and all(x in "0123456789abcdef" for x in c)
 
 
-ACCENTS = str.maketrans("àáèéíïòóúüçÀÁÈÉÍÏÒÓÚÜÇ", "aaeeiioouucAAEEIIOOUUC")
+def identifica_dispositiu():
+    """Identificador a l'atzar d'aquest mobil o tauleta: no diu res de qui hi juga.
+    Es llegeix de la galeta; si no n'hi ha, se'n fa un de nou i el JS de galeta_html() el desa."""
+    ss = st.session_state
+    if ss.jugador:
+        return
+    try:
+        c = st.context.cookies.get(COOKIE, "")
+    except Exception:
+        c = ""
+    ss.jugador = c if clau_ok(c) else uuid.uuid4().hex[:16]
 
 
-def clau_jugador(nom):
-    """Identificador del jugador: sha256 del nom I EL COGNOM, calculat aqui.
-
-    A la base de dades nomes hi va aquest resum, mai el cognom. Es fa servir el
-    cognom SENCER (no la inicial) perque a la classe hi pot haver dos nens que
-    siguin tots dos "Jan D." i no han de compartir fila ni punts (22 set 2026)."""
-    parts = normalitza_nom(nom).translate(ACCENTS).lower().split()[:2]
-    if not parts:
-        return ""
-    return hashlib.sha256(("aventura-matematica|" + " ".join(parts)).encode()).hexdigest()[:16]
+def galeta_html(jugador):
+    # Es torna a posar a cada visita: Safari esborra les galetes de JS si passen 7 dies sense entrar.
+    return ("<script>try{var d=window.parent.document;d.cookie='" + COOKIE + "=" + jugador +
+            "; max-age=34560000; path=/; SameSite=Lax'+(location.protocol==='https:'||"
+            "window.parent.location.protocol==='https:'?'; Secure':'');}catch(e){}</script>")
 
 
-# Nomes dibuixos, animals i nens. Revisats un a un mirant el primer fotograma:
-# fora els 4 que eren el cartell 'THIS CONTENT IS NOT AVAILABLE' i tots els
-# d'actors i adults (Trump, DiCaprio, Morgan Freeman, Borat...).
-CELEBRATION_GIFS = [
-    "https://i.giphy.com/osMIREQbo3s2c.gif",
-    "https://i.giphy.com/BQAk13taTaKYw.gif",
-    "https://i.giphy.com/8Do5PA5jPmTd3x8GI4.gif",
-    "https://i.giphy.com/bCcxY1ADkAqfS.gif",
-    "https://i.giphy.com/kHCc089grRFzSnVHvq.gif",
-    "https://i.giphy.com/hDwYu8UEcUone.gif",
-    "https://i.giphy.com/fCmnDUmpNYqnE2PidN.gif",
-    "https://i.giphy.com/Z8wxB5I34Wl9Rx0ilC.gif",
-    "https://i.giphy.com/bP9S3BMElQ5XAWQIR3.gif",
-    "https://i.giphy.com/N5J5reSW1XkWKoaeij.gif",
-    "https://i.giphy.com/TdfyKrN7HGTIY.gif",
-    "https://i.giphy.com/VkUdMsK42kNgrPWuHd.gif",
-    "https://i.giphy.com/kagE8uswvjrC2KanKI.gif",
-    "https://i.giphy.com/IXB6mQUgOqWQM.gif",
-    "https://i.giphy.com/hEIuLmpW9DmGA.gif",
-    "https://i.giphy.com/HJQObm4T6xS2Q.gif",
-    "https://i.giphy.com/0WQXGB5aOPLdBRFWyH.gif",
-    "https://i.giphy.com/11sBLVxNs7v6WA.gif",
-    "https://i.giphy.com/3o7abKhOpu0NwenH3O.gif",
-    "https://i.giphy.com/3oz8xAFtqoOUUrsh7W.gif",
-    "https://i.giphy.com/QvBoMEcQ7DQXK.gif",
-]
+# Animacions per felicitar: emojis animats de Google (Noto Emoji Animation, CC BY 4.0), servits
+# des de la propia app (static/festa/, .streamlit/config.toml). Abans eren GIFs de Giphy: alguns
+# sortien en negre o amb interrogants i cada GIF enviava la IP del nen a un tercer (17 nov 2026).
+# Revisats un a un mirant-ne els fotogrames: fora els de fons fosc (focs artificials) i els que
+# no feien festa. Per afegir-ne: deixar el .webp a static/festa/.
+CELEBRATION_GIFS = sorted(f"app/static/festa/{f.name}" for f in (BASE_DIR / "static" / "festa").glob("*.webp"))
 # Motivadores i valides per a nens i nenes (formes dobles: CAMPIÓ/NA, LLEST/A...).
 CELEBRATION_MESSAGES = [
     "MOLT BÉ!",
@@ -845,6 +819,7 @@ def local_css():
       .medal-overlay h1 { font-size: 1.9rem !important; }
       .medal-overlay h2 { font-size: 1.1rem; }
     }
+    .gif-overlay img { width: min(300px, 70vw); height: auto; }
     .gif-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; }
     .scoreboard { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
     .chip { background: white; border-radius: 15px; padding: 6px 14px; font-family: 'Bungee', cursive; color: #2D3436; box-shadow: 0 3px 0 rgba(0,0,0,0.1); font-size: 1rem; }
@@ -2105,14 +2080,14 @@ def new_problem():
 
 # ------------------------------------------------------------------ STATE
 DEFAULTS = {
-    'current_block': "Home", 'nom': "", 'diff': "Fàcil", 'mode': "Sumes", 'calcul_kind': "Tots",
+    'current_block': "Home", 'jugador': "", 'diff': "Fàcil", 'mode': "Sumes", 'calcul_kind': "Tots",
     'reading_pos': 0, 'rival_pos': 0, 'reading_word': "", 'word_start_time': time.time(),
     'words_pool': [], 'problem_text': "", 'problem_html': None, 'correct_answer': 0,
     'input_key': 0, 'last_status': None, 'reveal': None, 'attempts': 0, 'ratxa': 0,
     'kind_label': "", 'lectura_avis': False,
     'punts': 0, 'encerts': 0, 'errors': 0, 'millor_ratxa': 0, 'partides': 0, 'db_error': '',
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
-    'base': None, 'nom_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
+    'base': None, 'jugador_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
     'sopa': None, 'sopa_n': 0, 'cq': None, 'cq_records': {}, 'golut': None, 'golut_n': 0, 'golut_op': 'suma', 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
 }
 for k, v in DEFAULTS.items():
@@ -2256,36 +2231,27 @@ def set_calcul_kind(k):
 def sync_progres():
     """Desa el total del nen (el que ja tenia + el d'aquesta sessio)."""
     ss = st.session_state
-    nom = ss.nom.strip()
-    if not nom or ss.base is None:
+    if not ss.jugador or ss.base is None:
         return
     try:
         b = ss.base
-        db_save(nom, b["punts"] + ss.punts, b["encerts"] + ss.encerts,
+        db_save(ss.jugador, b["punts"] + ss.punts, b["encerts"] + ss.encerts,
                 b["errors"] + ss.errors, max(b["millor_ratxa"], ss.millor_ratxa),
                 b["partides"] + ss.partides)
     except Exception as e:
         ss.db_error = str(e)
 
 
-def on_nom_change():
-    """Streamlit esborra l'estat dels widgets que deixen de dibuixar-se, i el nom
-    nomes es dibuixa a la Home: si el guardavem a la clau del widget, es perdia
-    en entrar a un bloc i no es desava res. Per aixo el copiem a 'nom', que es
-    una clau normal i sobreviu."""
-    st.session_state.nom = normalitza_nom(st.session_state.nom_input)
-    carrega_base()
-
-
 def carrega_base():
-    """Quan el nen escriu el seu nom, recupera el que ja tenia."""
+    """En obrir l'app, recupera el que ja s'havia fet en aquest dispositiu."""
     ss = st.session_state
-    nom = ss.nom.strip()
-    if nom == ss.nom_actiu:
+    identifica_dispositiu()
+    nom = ss.jugador
+    if nom == ss.jugador_actiu:
         return
-    ss.nom_actiu = nom
+    ss.jugador_actiu = nom
     dia = avui().isoformat()
-    jugat_avui = dia in ss.dies          # pot haver jugat abans d'escriure el nom
+    jugat_avui = dia in ss.dies
     if not nom:
         ss.base = None
         ss.dies = [dia] if jugat_avui else []
@@ -2493,13 +2459,16 @@ def render_header():
     with c2: st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
     st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
+# Qui juga: un numero a l'atzar d'aquest dispositiu (cap nom). La galeta es desa des d'un
+# component amagat; es torna a posar a cada visita perque no caduqui.
+carrega_base()
+with st.container(key="galeta"):
+    st.markdown("<style>.st-key-galeta{display:none !important;}</style>", unsafe_allow_html=True)
+    components.html(galeta_html(st.session_state.jugador), height=0)
 render_header()
 
 if st.session_state.current_block == "Home":
-    # Nomes nom + inicial (mai el cognom sencer) i escapat: el nom el escriu qualsevol
-    hola = (f"Hola <b>{html_mod.escape(nom_public(st.session_state.nom))}</b>! "
-            if st.session_state.nom.strip() else "")
-    st.markdown(f"<p style='font-size:1.1rem;'>{hola}Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='font-size:1.1rem;'>Hola! Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     # La descripcio va DINS de la columna del seu boto: aixi queda alineada
     # sempre. Abans anaven totes en una fila a part i es descolocaven en
     # arribar al final de linia. Files de tres; si a l'ultima en queda un, va al mig.
@@ -2532,20 +2501,12 @@ if st.session_state.current_block == "Home":
     st.button(f"📅 EL MEU CALENDARI I MEDALLES{medalles_txt}", key="home_cal", use_container_width=True,
               on_click=lambda: st.session_state.update(current_block="Calendari", cal_mes=None))
     st.markdown("<br>", unsafe_allow_html=True)
-    if "nom_input" not in st.session_state:
-        st.session_state.nom_input = st.session_state.nom
-    st.text_input("El teu nom i cognom (per guardar el teu calendari)", key="nom_input",
-                  max_chars=40, placeholder="Ex: Anna Pons", on_change=on_nom_change)
-    st.session_state.nom = normalitza_nom(st.session_state.nom_input)
-    carrega_base()
-    if st.session_state.nom.strip() and st.session_state.base:
-        n = len(st.session_state.dies)
-        hola = (f"Hola de nou! Portes {n} medalla del dia. " if n == 1 else
-                f"Hola de nou! Portes {n} medalles del dia. " if n else "Hola! ")
-        st.caption(hola + "Cada dia que facis exercicis en guanyes una. "
-                   "El cognom no es desa enlloc: només serveix per reconèixer-te.")
-    elif not st.session_state.nom.strip():
-        st.caption("Sense nom pots jugar igual, però el teu calendari no es guardarà per a un altre dia.")
+    n = len(st.session_state.dies)
+    hola = (f"Portes {n} medalla del dia. " if n == 1 else f"Portes {n} medalles del dia. " if n else "")
+    st.caption(hola + "Cada dia que facis exercicis en guanyes una. El calendari es guarda en aquest "
+               "mòbil o tauleta, sense cap nom ni cap dada personal.")
+    st.markdown("<p style='font-size:0.7rem; opacity:0.6; margin-top:14px;'>Animacions: Noto Emoji "
+                "(Google, CC BY 4.0) · Dibuixos: OpenMoji (CC BY-SA 4.0)</p>", unsafe_allow_html=True)
     if st.session_state.db_error:
         # El detall tecnic nomes al log: els pares no l'han de veure
         print("db_error:", st.session_state.db_error, flush=True)
@@ -2570,8 +2531,6 @@ elif st.session_state.current_block == "Calendari":
             f"<div class='chip'>📆 {setmana} {'DIA' if setmana == 1 else 'DIES'} AQUESTA SETMANA</div>"
             f"<div class='chip'>🏅 {len(guanyades)} DE {len(MEDALLES)} ESPECIALS</div></div>",
             unsafe_allow_html=True)
-        if not ss.nom.strip():
-            st.info("Escriu el teu nom a l'inici perquè el calendari es guardi per a un altre dia.")
         import calendar as _calendar
         cel = [f"<div class='cal-cap'>{x}</div>" for x in DIES_SETMANA]
         for d in _calendar.Calendar(firstweekday=0).itermonthdates(any_, mes):
@@ -2605,7 +2564,7 @@ elif st.session_state.current_block == "Calendari":
             targetes.append(f"<div class='{classe}'><div class='ico'>{ico}</div>"
                             f"<div class='nom'>{nom}</div><div class='com'>{com}</div></div>")
         st.markdown(f"<div class='med-grid'>{''.join(targetes)}</div>", unsafe_allow_html=True)
-        if not _api() and get_engine()[1] and ss.nom.strip():
+        if not _api() and get_engine()[1] and ss.jugador:
             st.caption("⚠️ Sense servidor configurat: el calendari només es guarda en aquest aparell "
                        "i es pot perdre. Calen els secrets `api_url` i `api_key`.")
         st.markdown("<br>", unsafe_allow_html=True)
@@ -2702,8 +2661,7 @@ else:
 
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
-        who = nom_public(normalitza_nom(ss.nom)) or "Jugador/a"
-        st.markdown(f"<div class='chip'>👦 {html_mod.escape(who)} · ⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='chip'>⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
         st.markdown("---")
         if st.button("🏠 INICI", key="sb_home", use_container_width=True):
             ss.current_block = "Home"; safe_rerun()
@@ -2879,7 +2837,7 @@ if st.session_state.last_status:
     status = st.session_state.last_status
     st.session_state.last_status = None
     if status == "correct":
-        gif = random.choice([g for g in CELEBRATION_GIFS if g != st.session_state.last_gif])
+        gif = random.choice([g for g in CELEBRATION_GIFS if g != st.session_state.last_gif] or [""])
         msg = random.choice([m for m in CELEBRATION_MESSAGES if m != st.session_state.last_msg])
         st.session_state.last_gif, st.session_state.last_msg = gif, msg
         st.markdown(f"<div class='gif-overlay'><img src='{gif}'><h1 style='font-family:Bungee; color:#FF6B6B; font-size:3rem; margin-top:20px;'>{msg} 🎉</h1></div>", unsafe_allow_html=True)

@@ -28,3 +28,10 @@ Una aplicació web interactiva i divertida per practicar matemàtiques, dissenya
 
 ## 🌐 Desplegament
 Aquesta aplicació està optimitzada per ser desplegada a **Streamlit Cloud**.
+
+## 🙏 Crèdits
+- Animacions de felicitar: [Noto Emoji Animation](https://googlefonts.github.io/noto-emoji-animation/) de Google, llicència CC BY 4.0.
+- Dibuixos per pintar: [OpenMoji](https://openmoji.org/), llicència CC BY-SA 4.0.
+
+## 🔒 Privacitat
+L'app no demana cap nom. Cada mòbil o tauleta té un número a l'atzar (galeta `am_dispositiu`) i al servidor només hi van aquest número, els punts i els dies jugats.

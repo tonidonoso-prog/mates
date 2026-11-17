@@ -2,7 +2,8 @@
 *$py.class
 *.py[cod]
 .DS_Store
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 .streamlit/secrets.toml
 .venv/
 __pycache__/
