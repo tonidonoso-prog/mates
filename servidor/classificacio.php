@@ -9,6 +9,8 @@
  * cfg.php (no va a git) torna ['clau' => '<secret>'].
  */
 header('Content-Type: application/json; charset=utf-8');
+header('X-Content-Type-Options: nosniff');
+header('Cache-Control: no-store');
 
 $cfg = @include __DIR__ . '/cfg.php';
 if (!is_array($cfg) || empty($cfg['clau'])) {

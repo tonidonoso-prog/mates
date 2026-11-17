@@ -42,4 +42,14 @@ run(at)
 assert at.session_state.current_block == "Calendari"
 at.button(key="cal_home").click()
 run(at)
-print("AppTest tot OK:", len(BLOCS), "blocs + calendari")
+
+# privacitat: a la pantalla nomes nom + inicial, i el nom escrit no pot injectar HTML
+# (17-nov-2026, ho va trobar el verificador: la portada ensenyava el cognom sencer)
+pantalla = lambda: " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
+at.text_input(key="nom_input").input("anna pons").run()
+assert "Anna P." in pantalla() and "Pons" not in pantalla(), pantalla()[:300]
+assert at.text_input(key="nom_input").placeholder == "Ex: Anna Pons"
+at.text_input(key="nom_input").input("<u>hack</u> <img src=x>").run()
+assert "<u>" not in pantalla() and "<img src=x" not in pantalla(), pantalla()[:300]
+assert "Donoso" not in open("app.py", encoding="utf-8").read()
+print("AppTest tot OK:", len(BLOCS), "blocs + calendari + privacitat del nom")

@@ -1,4 +1,5 @@
 import copy
+import html as html_mod
 import hashlib
 import threading
 import uuid
@@ -284,13 +285,13 @@ def marca_avui():
 
 
 def normalitza_nom(nom):
-    """Els nens escriuran 'jan donoso', 'JAN DONOSO' i 'Jan  Donoso'. Sense
+    """Els nens escriuran 'anna pons', 'ANNA PONS' i 'Anna  Pons'. Sense
     normalitzar serien tres files diferents al rànquing i es repartirien els punts."""
     return " ".join(w.capitalize() for w in nom.split())
 
 
 def nom_public(nom):
-    """'Jan Donoso' -> 'Jan D.'  ·  'Jan D.' -> 'Jan D.'  ·  'Jan' -> 'Jan'.
+    """'Anna Pons' -> 'Anna P.'  ·  'Anna P.' -> 'Anna P.'  ·  'Anna' -> 'Anna'.
 
     Es el UNIC nom que surt del navegador cap a la base de dades: el cognom
     sencer no es desa enlloc, ni tan sols xifrat."""
@@ -2495,7 +2496,9 @@ def render_header():
 render_header()
 
 if st.session_state.current_block == "Home":
-    hola = f"Hola <b>{st.session_state.nom}</b>! " if st.session_state.nom.strip() else ""
+    # Nomes nom + inicial (mai el cognom sencer) i escapat: el nom el escriu qualsevol
+    hola = (f"Hola <b>{html_mod.escape(nom_public(st.session_state.nom))}</b>! "
+            if st.session_state.nom.strip() else "")
     st.markdown(f"<p style='font-size:1.1rem;'>{hola}Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
     # La descripcio va DINS de la columna del seu boto: aixi queda alineada
     # sempre. Abans anaven totes en una fila a part i es descolocaven en
@@ -2532,7 +2535,7 @@ if st.session_state.current_block == "Home":
     if "nom_input" not in st.session_state:
         st.session_state.nom_input = st.session_state.nom
     st.text_input("El teu nom i cognom (per guardar el teu calendari)", key="nom_input",
-                  max_chars=40, placeholder="Ex: Jan Donoso", on_change=on_nom_change)
+                  max_chars=40, placeholder="Ex: Anna Pons", on_change=on_nom_change)
     st.session_state.nom = normalitza_nom(st.session_state.nom_input)
     carrega_base()
     if st.session_state.nom.strip() and st.session_state.base:
@@ -2544,7 +2547,9 @@ if st.session_state.current_block == "Home":
     elif not st.session_state.nom.strip():
         st.caption("Sense nom pots jugar igual, però el teu calendari no es guardarà per a un altre dia.")
     if st.session_state.db_error:
-        st.warning("No s'ha pogut desar el progrés: " + st.session_state.db_error)
+        # El detall tecnic nomes al log: els pares no l'han de veure
+        print("db_error:", st.session_state.db_error, flush=True)
+        st.warning("Ara mateix no s'ha pogut desar el calendari. Pots jugar igual.")
 
 elif st.session_state.current_block == "Calendari":
     # ---- El meu calendari: nomes les medalles d'aquest nen, sense comparar amb ningu ----
@@ -2698,7 +2703,7 @@ else:
     with st.sidebar:
         st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
         who = nom_public(normalitza_nom(ss.nom)) or "Jugador/a"
-        st.markdown(f"<div class='chip'>👦 {who} · ⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='chip'>👦 {html_mod.escape(who)} · ⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
         st.markdown("---")
         if st.button("🏠 INICI", key="sb_home", use_container_width=True):
             ss.current_block = "Home"; safe_rerun()
