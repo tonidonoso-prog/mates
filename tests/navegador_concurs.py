@@ -38,7 +38,7 @@ with sync_playwright() as p:
         print(eng, "portada:", boto.inner_text(), "· daurat:", "247, 183, 49" in fons or "255, 209, 92" in fons)
         pg.screenshot(path=f"{CAP}/cq_home_{tag}.png", full_page=True)
         boto.click(); espera(pg, ".st-key-cq_tema_animals button")
-        assert pg.locator("input").count() == 0, "no hi ha d'haver cap camp per escriure codis"
+        assert pg.locator("input:visible").count() == 0, "no hi ha d'haver cap camp per escriure codis"
         pg.locator(".st-key-ctl_lvl_dificil button").first.click(); time.sleep(3)
         pg.screenshot(path=f"{CAP}/cq_temes_{tag}.png", full_page=True)
         pg.locator(".st-key-cq_tema_animals button").first.click(); espera(pg, ".cq-temps")

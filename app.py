@@ -76,7 +76,7 @@ BASE_DIR = Path(__file__).parent
 
 # Cap nom: hi juguen menors i son dades protegides (17 nov 2026, el Toni: "no podemos dar en ningun
 # sitio que escriban el nombre, es confidencial"). Cada mobil o tauleta te un identificador a l'atzar
-# (galeta 'am_dispositiu'); a la base de dades nomes hi van aquest numero, els totals i els dies.
+# (guardat al navegador, 'am_dispositiu'); a la base de dades nomes hi van aquest numero, els totals i els dies.
 
 
 @st.cache_resource
@@ -283,31 +283,48 @@ def marca_avui():
             ss.db_error = str(e)
 
 
-COOKIE = "am_dispositiu"
+DISPOSITIU = "am_dispositiu"
 
 
 def clau_ok(c):
     return isinstance(c, str) and len(c) == 16 and all(x in "0123456789abcdef" for x in c)
 
 
-def identifica_dispositiu():
-    """Identificador a l'atzar d'aquest mobil o tauleta: no diu res de qui hi juga.
-    Es llegeix de la galeta; si no n'hi ha, se'n fa un de nou i el JS de galeta_html() el desa."""
-    ss = st.session_state
-    if ss.jugador:
-        return
-    try:
-        c = st.context.cookies.get(COOKIE, "")
-    except Exception:
-        c = ""
-    ss.jugador = c if clau_ok(c) else uuid.uuid4().hex[:16]
+def on_dispositiu():
+    """El JS de dispositiu_html() ha escrit l'identificador d'aquest mobil o tauleta al camp amagat."""
+    c = st.session_state.get("dispositiu", "")
+    if clau_ok(c) and c != st.session_state.jugador:
+        st.session_state.jugador = c
+        carrega_base()
 
 
-def galeta_html(jugador):
-    # Es torna a posar a cada visita: Safari esborra les galetes de JS si passen 7 dies sense entrar.
-    return ("<script>try{var d=window.parent.document;d.cookie='" + COOKIE + "=" + jugador +
-            "; max-age=34560000; path=/; SameSite=Lax'+(location.protocol==='https:'||"
-            "window.parent.location.protocol==='https:'?'; Secure':'');}catch(e){}</script>")
+def dispositiu_html():
+    # Un numero a l'atzar guardat al navegador (localStorage), que no diu res de qui hi juga.
+    # Abans era una galeta, pero Streamlit Cloud no la fa arribar a l'app (17 nov 2026).
+    return """<script>
+(function(){
+  var d = window.parent.document, w = window.parent, K = '""" + DISPOSITIU + """', id = '';
+  try { id = w.localStorage.getItem(K) || ''; } catch(e) {}
+  if (!/^[0-9a-f]{16}$/.test(id)) {
+    var a = new Uint8Array(8); w.crypto.getRandomValues(a);
+    id = Array.prototype.map.call(a, function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+    try { w.localStorage.setItem(K, id); } catch(e) {}
+  }
+  var n = 0, t = setInterval(function(){
+    var el = d.querySelector('.st-key-dispositiu input');
+    if (++n > 100) { clearInterval(t); return; }
+    if (!el) return;
+    clearInterval(t);
+    if (el.value === id) return;
+    var set = Object.getOwnPropertyDescriptor(w.HTMLInputElement.prototype, 'value').set;
+    set.call(el, id);
+    el.dispatchEvent(new w.Event('input', {bubbles: true}));
+    ['keydown', 'keypress'].forEach(function(tipus){
+      el.dispatchEvent(new w.KeyboardEvent(tipus, {key: 'Enter', code: 'Enter', keyCode: 13, which: 13, charCode: 13, bubbles: true}));
+    });
+  }, 100);
+})();
+</script>"""
 
 
 # Animacions per felicitar: emojis animats de Google (Noto Emoji Animation, CC BY 4.0), servits
@@ -2245,7 +2262,6 @@ def sync_progres():
 def carrega_base():
     """En obrir l'app, recupera el que ja s'havia fet en aquest dispositiu."""
     ss = st.session_state
-    identifica_dispositiu()
     nom = ss.jugador
     if nom == ss.jugador_actiu:
         return
@@ -2459,12 +2475,13 @@ def render_header():
     with c2: st.markdown("<h2 style='font-family:Bungee; color:#FF6B6B; margin:0;'>AVENTURA MATEMÀTICA</h2>", unsafe_allow_html=True)
     st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
-# Qui juga: un numero a l'atzar d'aquest dispositiu (cap nom). La galeta es desa des d'un
-# component amagat; es torna a posar a cada visita perque no caduqui.
+# Qui juga: un numero a l'atzar d'aquest dispositiu (cap nom). El JS el llegeix del navegador
+# i l'escriu al camp amagat 'dispositiu'; el callback carrega el que ja s'hi havia fet.
 carrega_base()
-with st.container(key="galeta"):
-    st.markdown("<style>.st-key-galeta{display:none !important;}</style>", unsafe_allow_html=True)
-    components.html(galeta_html(st.session_state.jugador), height=0)
+with st.container(key="amagat_dispositiu"):
+    st.markdown("<style>.st-key-amagat_dispositiu{display:none !important;}</style>", unsafe_allow_html=True)
+    st.text_input("dispositiu", key="dispositiu", on_change=on_dispositiu, label_visibility="collapsed")
+    components.html(dispositiu_html(), height=0)
 render_header()
 
 if st.session_state.current_block == "Home":

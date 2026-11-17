@@ -1,4 +1,4 @@
-"""Sense noms: el dispositiu es recorda amb una galeta a l'atzar, i la felicitacio es una
+"""Sense noms: el dispositiu es recorda amb un numero a l'atzar guardat al navegador, i la felicitacio es una
 animacio servida per la propia app (cap tercer). Navegador real (ordinador i mobil).
 
 Cal tenir l'app engegada:  python3 -m streamlit run app.py --server.port 8599 --server.headless true
@@ -14,8 +14,15 @@ URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8599"
 CAP = sys.argv[2] if len(sys.argv) > 2 else "/tmp"
 
 
-def galeta(ctx):
-    return next((c["value"] for c in ctx.cookies() if c["name"] == "am_dispositiu"), None)
+def galeta(pg):
+    """L'identificador del navegador (localStorage) i el que ha rebut l'app (camp amagat)."""
+    for _ in range(50):
+        ls = pg.evaluate("() => localStorage.getItem('am_dispositiu')")
+        camp = pg.locator(".st-key-dispositiu input").first.input_value() if pg.locator(".st-key-dispositiu input").count() else ""
+        if ls and ls == camp:
+            return ls
+        time.sleep(0.2)
+    raise AssertionError(("no arriba a l'app", ls, camp))
 
 
 with sync_playwright() as p:
@@ -28,9 +35,9 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.on("request", lambda r: terc.add(r.url.split("/")[2]) if "giphy" in r.url else None)
         pg.goto(URL); pg.wait_for_selector(".st-key-home_Mates button", timeout=90000); time.sleep(3)
-        assert pg.locator("input[type=text]").count() == 0, "cap camp per escriure el nom"
+        assert pg.locator("input[type=text]:visible").count() == 0, "cap camp per escriure el nom"
         assert "nom i cognom" not in pg.content().lower()
-        g1 = galeta(ctx)
+        g1 = galeta(pg)
         print(eng, "galeta:", g1)
         assert g1 and re.fullmatch(r"[0-9a-f]{16}", g1)
         # un exercici bo -> felicitacio amb animacio local
@@ -38,7 +45,7 @@ with sync_playwright() as p:
         pg.wait_for_selector(".problem-box", timeout=20000); time.sleep(1)
         txt = pg.locator(".problem-box").first.inner_text()
         expr = txt.split("=")[0].replace("×", "*").replace("x", "*").strip()
-        pg.locator("input").first.fill(str(eval(expr))); pg.keyboard.press("Enter")
+        pg.locator("[data-testid=stNumberInput] input").first.fill(str(eval(expr))); pg.keyboard.press("Enter")
         pg.wait_for_selector(".gif-overlay img", timeout=15000)
         img = pg.locator(".gif-overlay img").first
         for _ in range(30):
@@ -53,10 +60,14 @@ with sync_playwright() as p:
         time.sleep(6)
         # tornar a entrar: el mateix dispositiu, la mateixa medalla del dia
         pg.goto(URL); pg.wait_for_selector(".st-key-home_cal button", timeout=90000); time.sleep(3)
-        g2 = galeta(ctx)
-        cal = pg.locator(".st-key-home_cal button").first.inner_text()
+        g2 = galeta(pg)
+        for _ in range(50):    # l'app rep l'identificador i carrega el calendari
+            cal = pg.locator(".st-key-home_cal button").first.inner_text()
+            if "⭐" in cal:
+                break
+            time.sleep(0.2)
         print(eng, "en tornar:", g2, "|", cal)
-        assert g2 == g1
+        assert g2 == g1 and "⭐ 1" in cal, (g1, g2, cal)
         print(eng, "giphy:", terc or "cap", "| errors JS:", errs)
         assert not terc and not errs
         pg.screenshot(path=f"{CAP}/portada_{tag}.png", full_page=True)

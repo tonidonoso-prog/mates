@@ -45,11 +45,14 @@ run(at)
 
 # privacitat (17-nov-2026, decisio del Toni): enlloc es demana el nom. Qui juga es un numero a
 # l'atzar del dispositiu, i el que va al servidor nomes en porta aquest numero.
-assert not at.text_input, "no hi ha d'haver cap camp per escriure el nom"
+# l'unic camp es l'amagat on el JS escriu l'identificador del navegador
+assert [t.key for t in at.text_input] == ["dispositiu"], [t.key for t in at.text_input]
 pantalla = " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
 assert "nom i cognom" not in pantalla.lower() and "escriu el teu nom" not in pantalla.lower()
-jug = at.session_state.jugador
-assert len(jug) == 16 and all(x in "0123456789abcdef" for x in jug), jug
+at.text_input(key="dispositiu").input("no es valid").run()
+assert at.session_state.jugador == ""
+at.text_input(key="dispositiu").input("0123456789abcdef").run()
+assert at.session_state.jugador == "0123456789abcdef"
 assert "Donoso" not in open("app.py", encoding="utf-8").read()
 gifs = [f for f in os.listdir("static/festa") if f.endswith(".webp")]
 assert len(gifs) >= 40, len(gifs)

@@ -71,7 +71,7 @@ at.button(key="home_Concurs").click(); run(at)
 keys = [b.key for b in at.button]
 assert "cq_tema_taules" in keys and "ctl_lvl_dificil" in keys
 assert not any(k and ("cq_rol" in k or "cq_entra" in k or "cq_crea" in k) for k in keys)
-assert not at.text_input, "no s'ha d'haver d'escriure cap codi"
+assert [t.key for t in at.text_input] == ["dispositiu"], "no s'ha d'haver d'escriure cap codi"
 at.button(key="ctl_lvl_normal").click(); run(at)
 at.button(key="cq_tema_taules").click(); run(at)
 g = at.session_state.cq

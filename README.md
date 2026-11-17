@@ -34,4 +34,4 @@ Aquesta aplicació està optimitzada per ser desplegada a **Streamlit Cloud**.
 - Dibuixos per pintar: [OpenMoji](https://openmoji.org/), llicència CC BY-SA 4.0.
 
 ## 🔒 Privacitat
-L'app no demana cap nom. Cada mòbil o tauleta té un número a l'atzar (galeta `am_dispositiu`) i al servidor només hi van aquest número, els punts i els dies jugats.
+L'app no demana cap nom. Cada mòbil o tauleta té un número a l'atzar (guardat al navegador, `am_dispositiu`) i al servidor només hi van aquest número, els punts i els dies jugats.
