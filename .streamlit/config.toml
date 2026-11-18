@@ -1,3 +1,8 @@
 [server]
 # Les animacions de felicitar (static/festa) es serveixen des de la propia app, sense tercers
 enableStaticServing = true
+
+[browser]
+# Sense estadistiques d'us de Streamlit: cada visita enviava la IP del nen a data.streamlit.io i
+# webhooks.fivetran.com (vist amb Playwright el 18 nov 2026). Mateix motiu pel qual es va treure Giphy.
+gatherUsageStats = false

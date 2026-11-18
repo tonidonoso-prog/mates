@@ -22,5 +22,13 @@ Aquest document serveix per recordar els errors comesos i la seva SOLUCIÓ defin
 - **✅ Solució**: Inicialitzar totes les variables a l'inici amb `if 'var' not in st.session_state`.
 - **🔄 Status**: CORREGIT. Afegit `problem_text` i `correct_answer`.
 
+## 🧪 PROVES AMB APPTEST (Streamlit 1.50)
+- **❌ Error**: `st.pills` i `st.segmented_control` fan petar l'AppTest (`content_icon ... is not in list`, `AttributeError: _widget_state`, i el valor triat el recorre lletra a lletra com si fos una llista). Va fallar dues vegades seguides (18 nov 2026, formulari del concurs en grup).
+  - **✅ Solució**: als formularis que s'han de provar amb AppTest, `st.radio(..., horizontal=True)`. Si alguna opció comença amb emoji, valors interns curts i `format_func` per a l'etiqueta.
+  - **🔄 Status**: CORREGIT.
+- **❌ Error**: comptar classes a `" ".join(m.value for m in at.markdown)` dona números falsos: hi surt també el CSS de `local_css()` (amb els mateixos noms de classe), el contingut d'un `@st.fragment` hi pot sortir dues vegades i `class='cg-av` també troba `class='cg-avatars'`. Va fallar tres vegades (18 nov 2026, `test_grup.py`).
+  - **✅ Solució**: retallar primer el tros real (`h[h.find("class='cg-avatars'"):h.find("class='cg-resum'")]`) i comptar amb l'etiqueta oberta sencera (`<span class='cg-av`).
+  - **🔄 Status**: CORREGIT.
+
 ---
 *Si veus un error nou, apunta'l aquí i posa la solució abans de seguir.*

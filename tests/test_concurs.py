@@ -53,6 +53,7 @@ def html(at):
 # la medalla del dia, a part: el primer exercici del dia la dona
 m = run(AppTest.from_file("app.py", default_timeout=60))
 m.button(key="home_Concurs").click(); run(m)
+m.button(key="cq_sol").click(); run(m)
 m.button(key="cq_tema_sumes").click(); run(m)
 m.button(key="conc_op_0").click(); run(m)
 assert len(m.session_state.dies) == 1
@@ -67,7 +68,11 @@ home = [b for b in at.button if b.key == "home_Concurs"][0]
 print("boto de la portada:", home.label)
 assert "NOU" in home.label            # fins al 15 de desembre de 2026
 at.button(key="home_Concurs").click(); run(at)
-# sense codis ni mestres: directament els temes, i amb nivells
+# 18 nov 2026: primer es tria jugar sol o en grup (pantalla gran)
+keys = [b.key for b in at.button]
+assert "cq_sol" in keys and "cq_grup" in keys, keys
+at.button(key="cq_sol").click(); run(at)
+# en solitari: sense codis ni mestres, directament els temes, i amb nivells
 keys = [b.key for b in at.button]
 assert "cq_tema_taules" in keys and "ctl_lvl_dificil" in keys
 assert not any(k and ("cq_rol" in k or "cq_entra" in k or "cq_crea" in k) for k in keys)

@@ -2,6 +2,7 @@ import copy
 import hashlib
 import threading
 import uuid
+import urllib.parse
 import urllib.request
 import streamlit as st
 import streamlit.components.v1 as components
@@ -25,7 +26,7 @@ BLOCKS = [
     ("🔠", "PENJAT", "Penjat", "Endevina la paraula lletra a lletra"),
     ("🎨", "COLOREJA", "Colors", "Pinta més de 100 dibuixos amb la paleta"),
     ("👾", "MONSTRE GOLUT", "Golut", "Dona-li els plats que fan el seu número"),
-    ("🎯", "CONCURS", "Concurs", "Respon ràpid i bat el teu rècord"),
+    ("🎯", "CONCURS", "Concurs", "Sol o en grup, amb una pantalla gran"),
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
 SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
@@ -734,6 +735,217 @@ def concurs_preguntes(tema, diff, n):
     return out
 
 
+# ============================================================ CONCURS EN GRUP (pantalla gran)
+# 18 nov 2026: el Toni torna a voler el joc de tota la classe, pero amb les seves regles:
+# - Cap nom ni alies: cada jugador rep un animal i un color a l'atzar, sense escriure res.
+# - Sense codis per teclejar: la pantalla gran ensenya un QR que porta a ?sala=<PIN> i l'app
+#   hi entra sola. El numero de sala surt petit, nomes com a alternativa.
+# - No es desa res: les sales viuen a la memoria del proces (st.cache_resource, compartit per
+#   totes les sessions) i desapareixen soles al cap de 3 h sense moviment.
+# - El joc en solitari es queda igual.
+# La primera versio de grup (15 nov, commit 32c5fd6) demanava escriure un codi: per aixo es va treure.
+CG_ANIMALS = "🐼 🦒 🐸 🦊 🐨 🐯 🦁 🐧 🐬 🦉 🐢 🐙 🦄 🐝 🦋 🐰 🐻 🐳 🐞 🦓".split()
+CG_COLORS = ["#EB3B5A", "#FA8231", "#F7B731", "#20BF6B", "#0FB9B1", "#4B7BEC", "#8854D0", "#F368E0"]
+CG_MAX_SALES = 30
+CG_MAX_JUGADORS = 40
+CG_VIDA = 3 * 3600          # una sala sense moviment desapareix al cap de 3 h
+CG_ACTIU = 8                # segons sense senyals d'un mobil per deixar d'esperar-ne la resposta
+CG_N = (5, 10, 15)          # preguntes per partida
+CG_SEGONS = (10, 15, 20, 30, 45)
+CG_RATXA_BONUS, CG_RATXA_MAX = 100, 500     # +100 per encert seguit (des del 2n), fins a +500
+APP_URL = "https://aventura-matematica.streamlit.app"
+
+
+@st.cache_resource
+def _sales():
+    """Totes les sales en joc, compartides per TOTES les sessions del mateix proces."""
+    return {"lock": threading.Lock(), "sales": {}}
+
+
+def _sala_neteja(sales, ara):
+    for pin in [p for p, sa in sales.items() if ara - sa["mogut"] > CG_VIDA]:
+        del sales[pin]
+
+
+def _sala_nova_ronda(sa):
+    """Preguntes noves i tothom a zero, pero els jugadors es queden a la sala (no cal tornar a escanejar)."""
+    sa.update(fase="espera", idx=0, t0=0.0,
+              preguntes=concurs_preguntes(sa["tema"], sa["nivell"], sa["n"]))
+    for j in sa["jugadors"].values():
+        j.update(punts=0, ratxa=0, respostes={})
+
+
+def sala_crea(tema, nivell, n, segons):
+    """Crea una sala i en torna el numero (o None si ja n'hi ha massa)."""
+    c = _sales()
+    with c["lock"]:
+        ara = time.time()
+        _sala_neteja(c["sales"], ara)
+        if len(c["sales"]) >= CG_MAX_SALES:
+            return None
+        pin = random.choice([p for p in map(str, range(1000, 10000)) if p not in c["sales"]])
+        sa = {"pin": pin, "tema": tema, "nivell": nivell, "n": n, "segons": segons,
+              "jugadors": {}, "mogut": ara, "ronda": 1}
+        _sala_nova_ronda(sa)
+        c["sales"][pin] = sa
+        return pin
+
+
+def _sala_tanca_pregunta(sa):
+    """Fi de la pregunta: qui no ha respost perd la ratxa, pero no perd punts."""
+    sa["fase"] = "resultat"
+    for j in sa["jugadors"].values():
+        if sa["idx"] not in j["respostes"]:
+            j["ratxa"] = 0
+
+
+def _sala_actualitza(sa, ara):
+    """La pregunta es tanca sola si s'acaba el temps o ja ha respost tothom qui hi es."""
+    if sa["fase"] != "pregunta":
+        return
+    actius = [j for j in sa["jugadors"].values()
+              if ara - j["vist"] <= CG_ACTIU or sa["idx"] in j["respostes"]]
+    tots = bool(actius) and all(sa["idx"] in j["respostes"] for j in actius)
+    if tots or ara - sa["t0"] >= sa["segons"]:
+        _sala_tanca_pregunta(sa)
+
+
+def sala_estat(pin, pid=None):
+    """Copia de la sala per pintar-la. Si qui pregunta es un jugador, consta que encara hi es."""
+    c = _sales()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return None
+        ara = time.time()
+        if pid in sa["jugadors"]:
+            sa["jugadors"][pid]["vist"] = ara
+        _sala_actualitza(sa, ara)
+        return copy.deepcopy(sa)
+
+
+def sala_entra(pin, pid):
+    """Un mobil entra a la sala i li toca un avatar lliure. Torna 'ok', 'no' (no hi es) o 'plena'."""
+    c = _sales()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return "no"
+        ara = time.time()
+        if pid in sa["jugadors"]:
+            sa["jugadors"][pid]["vist"] = ara
+            return "ok"
+        if len(sa["jugadors"]) >= CG_MAX_JUGADORS:
+            return "plena"
+        agafats = {(j["emoji"], j["color"]) for j in sa["jugadors"].values()}
+        usos = {e: 0 for e in CG_ANIMALS}
+        for j in sa["jugadors"].values():
+            usos[j["emoji"]] += 1
+        lliures = [(e, col) for e in CG_ANIMALS for col in CG_COLORS if (e, col) not in agafats]
+        minim = min(usos[e] for e, _ in lliures)       # primer, animals que encara no hi son
+        emoji, color = random.choice([(e, col) for e, col in lliures if usos[e] == minim])
+        sa["jugadors"][pid] = {"emoji": emoji, "color": color, "punts": 0, "ratxa": 0,
+                               "respostes": {}, "vist": ara, "entrat": ara}
+        sa["mogut"] = ara
+        return "ok"
+
+
+def sala_respon(pin, pid, opcio):
+    """Torna la resposta apuntada ({punts, bonus, encert...}) o None si ja no es pot respondre."""
+    c = _sales()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa:
+            return None
+        ara = time.time()
+        _sala_actualitza(sa, ara)
+        j = sa["jugadors"].get(pid)
+        if sa["fase"] != "pregunta" or not j or sa["idx"] in j["respostes"]:
+            return None
+        t = ara - sa["t0"]
+        encert = opcio == sa["preguntes"][sa["idx"]]["correcta"]
+        if encert:
+            j["ratxa"] += 1
+            # mes rapid, mes punts: de 1000 (a l'instant) a 500 (just al final)
+            base = round(1000 * (1 - min(t, sa["segons"]) / (2 * sa["segons"])))
+            bonus = min(CG_RATXA_BONUS * (j["ratxa"] - 1), CG_RATXA_MAX)
+        else:
+            j["ratxa"], base, bonus = 0, 0, 0
+        r = {"opcio": opcio, "t": round(t, 1), "punts": base + bonus, "bonus": bonus,
+             "encert": encert, "ratxa": j["ratxa"]}
+        j["respostes"][sa["idx"]] = r
+        j["punts"] += base + bonus
+        j["vist"] = sa["mogut"] = ara
+        _sala_actualitza(sa, ara)
+        return r
+
+
+def sala_avanca(pin, fase, idx):
+    """Boto de la pantalla gran: comencar, tancar la pregunta o passar a la seguent.
+    Nomes actua si la sala encara es a la fase i pregunta on s'ha clicat (un doble clic no salta res)."""
+    c = _sales()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if not sa or sa["fase"] != fase or sa["idx"] != idx:
+            return
+        ara = time.time()
+        if fase == "pregunta":
+            _sala_tanca_pregunta(sa)
+        elif fase in ("espera", "resultat"):
+            if fase == "resultat":
+                sa["idx"] += 1
+            if sa["idx"] >= len(sa["preguntes"]):
+                sa["fase"] = "final"
+            else:
+                sa["fase"], sa["t0"] = "pregunta", ara
+        sa["mogut"] = ara
+
+
+def sala_torna(pin):
+    """Tornar a jugar amb la mateixa sala i la mateixa gent (preguntes noves, punts a zero)."""
+    c = _sales()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if sa:
+            _sala_nova_ronda(sa)
+            sa["ronda"] += 1
+            sa["mogut"] = time.time()
+
+
+def sala_config(pin, tema, nivell, n, segons):
+    """Canviar tema, nivell, preguntes o segons d'una sala que espera (la gent es queda)."""
+    c = _sales()
+    with c["lock"]:
+        sa = c["sales"].get(pin)
+        if sa and sa["fase"] in ("espera", "final"):
+            sa.update(tema=tema, nivell=nivell, n=n, segons=segons)
+            _sala_nova_ronda(sa)
+            sa["mogut"] = time.time()
+
+
+def sala_tanca(pin):
+    c = _sales()
+    with c["lock"]:
+        c["sales"].pop(pin, None)
+
+
+def sala_classificacio(sa):
+    """[(posicio, pid, jugador)] de mes a menys punts. Empat = mateixa posicio."""
+    ordre = sorted(sa["jugadors"].items(), key=lambda kv: (-kv[1]["punts"], kv[1]["entrat"]))
+    return [(1 + sum(1 for x in sa["jugadors"].values() if x["punts"] > j["punts"]), pid, j)
+            for pid, j in ordre]
+
+
+def sala_vots(sa, idx):
+    """Quanta gent ha triat cada opcio a la pregunta idx."""
+    vots = [0, 0, 0, 0]
+    for j in sa["jugadors"].values():
+        r = j["respostes"].get(idx)
+        if r:
+            vots[r["opcio"]] += 1
+    return vots
+
+
 # Carrera de lectura: (segons de base, segons per lletra) que es consideren "bon ritme"
 LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.5, 0.52), "Difícil": (1.5, 0.47)}
 
@@ -916,6 +1128,97 @@ def local_css():
     .cq-feedback { text-align: center; font-family: 'Bungee', cursive; font-size: 2.6rem; padding: 24px 10px;
                    border-radius: 24px; color: white; margin: 10px 0; }
     .cq-feedback.si { background: #20BF6B; } .cq-feedback.no { background: #EB3B5A; }
+    .cq-feedback.espera { background: #8854D0; font-size: 1.7rem; }
+    .st-key-cq_sol div.stButton > button, .st-key-cq_grup div.stButton > button { min-height: 110px !important; font-size: 1.5rem !important; }
+    .st-key-cq_grup div.stButton > button { background: linear-gradient(180deg,#4B7BEC 0%,#3867D6 100%) !important; box-shadow: 0 5px 0 #2a4fa8 !important; }
+    /* ---- concurs en grup ---- */
+    .cg-av { display: inline-flex; align-items: center; justify-content: center; width: 58px; height: 58px;
+             border-radius: 50%; font-size: 2.1rem; line-height: 1; border: 3px solid white;
+             box-shadow: 0 3px 0 rgba(0,0,0,.15); flex: 0 0 auto; }
+    .cg-av.mig { width: 84px; height: 84px; font-size: 3.1rem; }
+    .cg-av.gran { width: 130px; height: 130px; font-size: 5rem; border-width: 6px; }
+    .cg-av.petit { width: 42px; height: 42px; font-size: 1.5rem; border-width: 2px; }
+    .cg-avatars .cg-av { animation: medalpop .6s ease-out; }
+    .cg-avatars { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 10px 0; min-height: 64px; }
+    .cg-qr-caixa { background: white; border-radius: 24px; padding: 14px; text-align: center;
+                   box-shadow: 0 6px 18px rgba(0,0,0,.08); max-width: 420px; margin: 0 auto 18px auto; }
+    .cg-ops { margin-bottom: 16px; }
+    .cg-qr { width: 100%; max-width: 380px; height: auto; display: block; margin: 0 auto; }
+    .cg-qr-peu { font-family: 'Bungee', cursive; font-size: 1.25rem; color: #2D3436; margin-top: 4px; }
+    .cg-url { font-size: 0.85rem; color: #636E72; word-break: break-all; margin-top: 2px; }
+    .cg-titol { font-family: 'Bungee', cursive; font-size: 2rem; color: #2D3436; text-align: center; margin: 4px 0 12px 0; }
+    .cg-resum { text-align: center; color: #636E72; font-size: 1.05rem; margin: 4px 0 10px 0; }
+    .cg-cap { display: flex; justify-content: space-between; align-items: center; font-family: 'Bungee', cursive;
+              color: #636E72; font-size: 1.15rem; gap: 8px; }
+    .cg-preg { font-family: 'Bungee', cursive; font-size: 3.3rem; color: #2D3436; text-align: center; margin: 14px 0;
+               line-height: 1.2; }
+    .cg-preg.petita { font-size: 1.9rem; margin: 6px 0 12px 0; }
+    .cg-barres { display: flex; gap: 14px; align-items: stretch; height: 250px; }
+    .cg-barra { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; }
+    .cg-barra .n { text-align: center; font-family: 'Bungee', cursive; font-size: 1.7rem; color: #2D3436; }
+    .cg-barra .col { border-radius: 12px 12px 0 0; min-height: 6px; }
+    .cg-barra .peu { border-radius: 0 0 12px 12px; color: white; font-family: 'Bungee', cursive; text-align: center;
+                     padding: 6px 4px; font-size: 1.15rem; overflow-wrap: anywhere; line-height: 1.15; }
+    .cg-barra.no { opacity: .35; }
+    .cg-barra.bona .peu { outline: 5px solid #20BF6B; outline-offset: 2px; }
+    .cg-top { display: flex; flex-direction: column; gap: 8px; }
+    .cg-top-tit { font-family: 'Bungee', cursive; color: #636E72; text-align: center; font-size: 1.1rem; }
+    .cg-fila { display: flex; align-items: center; gap: 12px; background: white; border-radius: 16px; padding: 5px 14px;
+               font-family: 'Bungee', cursive; font-size: 1.35rem; color: #2D3436; box-shadow: 0 3px 0 rgba(0,0,0,.06); }
+    .cg-fila .pos { width: 30px; color: #636E72; }
+    .cg-fila .pts { margin-left: auto; }
+    .cg-fila .foc { font-size: 0.95rem; color: #FA8231; }
+    .cg-frase { font-family: 'Bungee', cursive; font-size: 1.6rem; color: #20BF6B; text-align: center; margin: 4px 0 10px 0; }
+    .cg-podi { display: flex; align-items: flex-end; justify-content: center; gap: 18px; margin: 6px 0; }
+    .cg-esgrao { display: flex; flex-direction: column; align-items: center; width: 210px; }
+    .cg-esgrao .pts { font-family: 'Bungee', cursive; font-size: 1.35rem; color: #2D3436; margin: 6px 0; }
+    .cg-bloc { width: 100%; border-radius: 18px 18px 0 0; display: flex; justify-content: center; align-items: flex-start;
+               font-family: 'Bungee', cursive; font-size: 3rem; color: white; padding-top: 6px; }
+    .cg-esgrao.p1 .cg-bloc { height: 150px; background: linear-gradient(180deg,#FFD15C,#F7B731); }
+    .cg-esgrao.p2 .cg-bloc { height: 110px; background: linear-gradient(180deg,#DFE6E9,#A4B0BE); }
+    .cg-esgrao.p3 .cg-bloc { height: 78px; background: linear-gradient(180deg,#F8A47B,#E17055); }
+    .cg-trofeu { width: 100px; height: 100px; }
+    .cg-festa { width: 74px; height: 74px; }
+    .cg-podi-cap { display: flex; justify-content: center; align-items: center; gap: 16px; }
+    .cg-jo { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-family: 'Bungee', cursive;
+             font-size: 1.5rem; color: #2D3436; margin-bottom: 6px; }
+    .cg-jo-centre { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 10px 0; }
+    .cg-mini { text-align: center; color: #636E72; font-size: 1rem; margin: 6px 0; }
+    .st-key-cg_botons div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; column-gap: 12px !important; }
+    .st-key-cg_botons div[data-testid="stColumn"] { flex: 1 1 0 !important; min-width: 0 !important; }
+    .st-key-cg_op_0 div.stButton > button { background: #8854D0 !important; box-shadow: 0 7px 0 #5F3A99 !important; }
+    .st-key-cg_op_1 div.stButton > button { background: #FA8231 !important; box-shadow: 0 7px 0 #B85A1C !important; }
+    .st-key-cg_op_2 div.stButton > button { background: #0FB9B1 !important; box-shadow: 0 7px 0 #0A817B !important; }
+    .st-key-cg_op_3 div.stButton > button { background: #EB3B8F !important; box-shadow: 0 7px 0 #A82563 !important; }
+    .st-key-cg_botons div.stButton > button { min-height: 150px !important; }
+    .st-key-cg_botons div.stButton > button p { font-size: 2.4rem !important; line-height: 1.1 !important; }
+    .st-key-maincard div[role="radiogroup"] { gap: 6px 18px; }
+    .st-key-maincard div[role="radiogroup"] label p { font-size: 1.15rem !important; font-weight: 700; }
+    .st-key-maincard div[data-testid="stWidgetLabel"] p { font-family: 'Bungee', cursive; font-size: 1.05rem !important; color: #636E72; }
+    .st-key-cg_m_start div.stButton > button { background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;
+                                               box-shadow: 0 5px 0 #0B7A45 !important; min-height: 76px !important; font-size: 1.8rem !important; }
+
+    @media (max-width: 767px) {
+      .cg-preg { font-size: 1.6rem; }
+      .cg-preg.petita { font-size: 1.1rem; }
+      .cg-av.gran { width: 104px; height: 104px; font-size: 4rem; }
+      .cg-av.mig { width: 64px; height: 64px; font-size: 2.3rem; }
+      .cg-jo { font-size: 1.15rem; }
+      .cg-barres { height: 170px; gap: 6px; }
+      .cg-barra .peu { font-size: 0.75rem; }
+      .cg-barra .n { font-size: 1.1rem; }
+      .cg-fila { font-size: 1rem; }
+      .cg-podi { gap: 6px; }
+      .cg-esgrao .pts { font-size: 0.9rem; }
+      .cg-bloc { font-size: 1.8rem; }
+      .cg-esgrao.p1 .cg-bloc { height: 120px; } .cg-esgrao.p2 .cg-bloc { height: 90px; } .cg-esgrao.p3 .cg-bloc { height: 64px; }
+      .cg-trofeu { width: 76px; height: 76px; } .cg-festa { width: 56px; height: 56px; }
+      .cg-titol { font-size: 1.4rem; }
+      .st-key-cg_botons div[data-testid="stHorizontalBlock"] { row-gap: 12px !important; }
+      .st-key-cg_botons div.stButton > button { min-height: max(140px, 25vh) !important; }
+      .st-key-cg_botons div.stButton > button p { font-size: 1.9rem !important; }
+      .st-key-cq_sol div.stButton > button, .st-key-cq_grup div.stButton > button { min-height: 84px !important; font-size: 1.05rem !important; }
+    }
 
     @media (max-width: 767px) {
       .cq-preg { font-size: 1.5rem; }
@@ -2106,6 +2409,9 @@ DEFAULTS = {
     'repte': None, 'repte_report': None, 'recent': [], 'last_gif': '', 'last_msg': '',
     'base': None, 'jugador_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
     'sopa': None, 'sopa_n': 0, 'cq': None, 'cq_records': {}, 'golut': None, 'golut_n': 0, 'golut_op': 'suma', 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
+    # concurs: 'sol' o 'grup'; en grup, la pantalla gran es 'mestre' i cada mobil 'jugador'
+    'cq_mode': None, 'cg_rol': None, 'cg_pin': '', 'cg_pid': '', 'cg_edita': False, 'cg_avis': '',
+    'cg_tema': 'barreja', 'cg_nivell': 'Fàcil', 'cg_n': 10, 'cg_seg': 20,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -2121,6 +2427,7 @@ def start_block(block):
     ss.words_pool = []; ss.reading_pos = ss.rival_pos = 0; ss.lectura_avis = False
     if block == "Repte": new_repte()
     if block == "Lletres": ss.lletra_idx = 0
+    if block == "Concurs": ss.cq_mode = None     # primer: jugar sol o en grup
     new_problem()
 
 def de_o_d(paraula):
@@ -2466,6 +2773,376 @@ def concurs_solo():
             rec = ss.cq_records.get(f"{tema}|{ss.diff}")
             col.button(label + (f" · 🏆 {_cq_punts(rec)}" if rec else ""), key=f"cq_tema_{tema}",
                        use_container_width=True, on_click=_cq_comenca, args=(tema,))
+    st.button("🔙 TORNAR", key="cq_sol_torna", on_click=lambda: ss.update(cq_mode=None, cq=None))
+
+
+# ------------------------------------------------------ CONCURS EN GRUP: PANTALLES
+def cg_url(pin):
+    """L'adreca del QR. A Streamlit Cloud, la publica; en local, la mateixa per on s'ha obert l'app
+    (aixi es pot provar a casa amb el mobil a la mateixa wifi)."""
+    base = APP_URL
+    try:
+        u = urllib.parse.urlsplit(st.context.url or "")
+        if u.hostname and not u.hostname.endswith("streamlit.app"):
+            base = f"{u.scheme}://{u.netloc}"
+    except Exception:
+        pass
+    return f"{base}/?sala={pin}"
+
+
+@st.cache_data(max_entries=64, show_spinner=False)
+def qr_data_uri(url):
+    """QR generat aqui mateix (segno, Python pur): cap servei de tercers veu l'adreca."""
+    try:
+        import segno
+        return segno.make_qr(url, error="m").svg_data_uri(scale=10, border=2, dark="#2D3436")
+    except Exception as e:
+        print("qr:", e, flush=True)
+        return ""
+
+
+def cg_av(j, mida=""):
+    """L'avatar d'un jugador: el seu animal dins un cercle del seu color. Cap nom."""
+    return f"<span class='cg-av {mida}' style='background:{j['color']};'>{j['emoji']}</span>"
+
+
+def cg_resum(sa):
+    tema = {t: l for l, t in CONCURS_TEMES}.get(sa["tema"], sa["tema"])
+    return f"{tema} · {sa['nivell'].upper()} · {sa['n']} PREGUNTES · {sa['segons']} SEGONS"
+
+
+def cg_ops_html(q):
+    """Pantalla gran: les quatre respostes amb el seu color i forma."""
+    caixes = "".join(f"<div class='cq-op' style='background:{color};'><span class='forma'>{forma}</span>"
+                     f"<span>{q['opcions'][i]}</span></div>" for i, (forma, color, _) in enumerate(CONCURS_FORMES))
+    return f"<div class='cq-ops cg-ops'>{caixes}</div>"
+
+
+def cg_barres_html(q, vots):
+    """Grafic de barres: quanta gent ha triat cada resposta. La bona, destacada."""
+    maxim = max(vots) or 1
+    barres = []
+    for i, (forma, color, _) in enumerate(CONCURS_FORMES):
+        bona = i == q["correcta"]
+        barres.append(f"<div class='cg-barra {'bona' if bona else 'no'}'><div class='n'>{vots[i]}</div>"
+                      f"<div class='col' style='height:{round(150 * vots[i] / maxim)}px;background:{color};'></div>"
+                      f"<div class='peu' style='background:{color};'>{forma} {q['opcions'][i]}{' ✓' if bona else ''}"
+                      f"</div></div>")
+    return f"<div class='cg-barres'>{''.join(barres)}</div>"
+
+
+def cg_top_html(sa, n=5):
+    files = []
+    for pos, _, j in sala_classificacio(sa)[:n]:
+        foc = f"<span class='foc'>🔥 {j['ratxa']}</span>" if j["ratxa"] >= 2 else ""
+        files.append(f"<div class='cg-fila'><span class='pos'>{pos}</span>{cg_av(j, 'petit')}{foc}"
+                     f"<span class='pts'>{_cq_punts(j['punts'])}</span></div>")
+    return f"<div class='cg-top'><div class='cg-top-tit'>🏅 TOP {n}</div>{''.join(files)}</div>"
+
+
+def cg_podi_html(sa):
+    """Podi amb els tres primers (segon, primer, tercer) i l'animacio de festa (static/festa)."""
+    cl = sala_classificacio(sa)[:3]
+    esgraons = []
+    for k in (1, 0, 2):
+        if k < len(cl):
+            pos, _, j = cl[k]
+            esgraons.append(f"<div class='cg-esgrao p{k + 1}'>{cg_av(j, 'gran' if k == 0 else 'mig')}"
+                            f"<div class='pts'>⭐ {_cq_punts(j['punts'])}</div><div class='cg-bloc'>{pos}</div></div>")
+    festa = ("<div class='cg-podi-cap'><img class='cg-festa' src='app/static/festa/1f389.webp' alt=''>"
+             "<img class='cg-trofeu' src='app/static/festa/1f3c6.webp' alt='Trofeu'>"
+             "<img class='cg-festa' src='app/static/festa/1f38a.webp' alt=''></div>")
+    return festa + f"<div class='cg-podi'>{''.join(esgraons)}</div>"
+
+
+def cg_prepara_edicio(sa):
+    """Omple el formulari amb la configuracio de la sala per canviar-la (la gent es queda)."""
+    ss = st.session_state
+    ss.cg_tema = sa["tema"]
+    ss.cg_nivell, ss.cg_n, ss.cg_seg, ss.cg_edita = sa["nivell"], sa["n"], sa["segons"], True
+
+
+def cg_deixa_sala():
+    """La pantalla gran tanca la sala: es tornen a veure les opcions per crear-ne una."""
+    ss = st.session_state
+    if ss.cg_pin:
+        sala_tanca(ss.cg_pin)
+    ss.update(cg_rol=None, cg_pin="", cg_edita=False, cg_avis="")
+
+
+def cg_surt():
+    """Un jugador surt: fora la sala de l'adreca, perque no hi torni a entrar sol."""
+    ss = st.session_state
+    for k in ("sala", "jo"):
+        if k in st.query_params:
+            del st.query_params[k]
+    ss.update(cg_rol=None, cg_pin="", cg_avis="", cq_mode=None, current_block="Home")
+
+
+@st.fragment(run_every=1)
+def cg_mestre():
+    """La pantalla gran (projector o pissarra digital). Es refresca sola cada segon."""
+    ss = st.session_state
+    pin = ss.cg_pin
+    sa = sala_estat(pin)
+    if sa is None:
+        st.markdown("<div class='cq-feedback espera'>Aquesta sala ja no hi és<br>(ha passat molta estona "
+                    "sense jugar o l'app s'ha reiniciat)</div>", unsafe_allow_html=True)
+        if st.button("✨ CREAR-NE UNA DE NOVA", key="cg_m_nova", use_container_width=True):
+            ss.update(cg_rol=None, cg_pin="", cg_edita=False)
+            st.rerun(scope="app")
+        return
+    jug, fase, idx = sa["jugadors"], sa["fase"], sa["idx"]
+    n_q = len(sa["preguntes"])
+
+    if fase == "espera":
+        url = cg_url(pin)
+        c1, c2 = st.columns([5, 7], gap="large")
+        qr = qr_data_uri(url)
+        img = f"<img class='cg-qr' src='{qr}' alt='Codi QR per entrar a la sala'>" if qr else ""
+        c1.markdown(f"<div class='cg-qr-caixa'>{img}<div class='cg-qr-peu'>📷 ESCANEJA'L PER JUGAR</div>"
+                    f"<div class='cg-url' data-url='{url}' data-pin='{pin}'>{url.split('://', 1)[-1]}</div></div>",
+                    unsafe_allow_html=True)
+        avatars = "".join(cg_av(j) for j in sorted(jug.values(), key=lambda j: j["entrat"]))
+        with c2:
+            st.markdown(f"<div class='cg-titol'>👥 {len(jug)} A LA SALA</div>"
+                        + (f"<div class='cg-avatars'>{avatars}</div>" if jug else
+                           "<div class='cg-mini'>Esperant que entri algú... A cadascú li tocarà un animal.</div>")
+                        + f"<div class='cg-resum'>{cg_resum(sa)}</div>", unsafe_allow_html=True)
+            st.button("▶️ COMENÇAR", key="cg_m_start", use_container_width=True, disabled=not jug,
+                      on_click=sala_avanca, args=(pin, "espera", 0))
+            b1, b2 = st.columns(2)
+            if b1.button("⚙️ CANVIAR TEMA", key="cg_m_config", use_container_width=True):
+                cg_prepara_edicio(sa)
+                st.rerun(scope="app")
+            if b2.button("🚪 TANCAR LA SALA", key="cg_m_tanca_sala", use_container_width=True):
+                cg_deixa_sala()
+                st.rerun(scope="app")
+        return
+
+    if fase == "final":
+        resp = [r for j in jug.values() for r in j["respostes"].values()]
+        pct = round(100 * sum(r["encert"] for r in resp) / len(resp)) if resp else 0
+        st.markdown("<div class='cg-titol'>🎉 FI DEL CONCURS! 🎉</div>" + cg_podi_html(sa)
+                    + f"<div class='cg-resum'>Entre tots i totes heu encertat el <b>{pct}%</b> de les respostes. "
+                    "Molt bona feina, equip! 💪</div>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        c1.button("🔁 TORNAR A JUGAR", key="cg_m_torna", use_container_width=True,
+                  on_click=sala_torna, args=(pin,))
+        if c2.button("⚙️ CANVIAR TEMA", key="cg_m_config2", use_container_width=True):
+            sala_torna(pin)
+            cg_prepara_edicio(sa)
+            st.rerun(scope="app")
+        if c3.button("🚪 TANCAR LA SALA", key="cg_m_tanca_sala2", use_container_width=True):
+            cg_deixa_sala()
+            st.rerun(scope="app")
+        return
+
+    q = sa["preguntes"][idx]
+    emoji = f"<div class='cq-emoji'>{q['emoji']}</div>" if q["emoji"] else ""
+    if fase == "pregunta":
+        queda = max(0, int(round(sa["segons"] - (time.time() - sa["t0"]))))
+        respostes = sum(1 for j in jug.values() if idx in j["respostes"])
+        st.markdown(f"<div class='cg-cap'><span>PREGUNTA {idx + 1} DE {n_q}</span>"
+                    f"<span class='cq-temps{' poc' if queda <= 5 else ''}'>{queda}</span>"
+                    f"<span class='cg-rebudes'>📥 {respostes} DE {len(jug)}</span></div>"
+                    + emoji + f"<div class='cg-preg'>{q['text']}</div>" + cg_ops_html(q), unsafe_allow_html=True)
+        st.button("⏭️ JA N'HI HA PROU", key="cg_m_tanca", use_container_width=True,
+                  on_click=sala_avanca, args=(pin, "pregunta", idx))
+        return
+
+    # resultat de la pregunta: la bona, quanta gent ha triat cada opcio i el top 5
+    vots = sala_vots(sa, idx)
+    bons, n = vots[q["correcta"]], len(jug)
+    frase = ("TOTHOM L'HA ENCERTADA! 🎉" if n and bons == n else
+             f"{bons} DE {n} L'HAN ENCERTADA!" if bons else "AQUESTA COSTAVA! 💪")
+    emoji = f"<div class='cq-emoji' style='font-size:3.2rem;'>{q['emoji']}</div>" if q["emoji"] else ""
+    st.markdown(f"<div class='cg-cap'><span>PREGUNTA {idx + 1} DE {n_q}</span></div>"
+                + emoji + f"<div class='cg-preg petita'>{q['text']}</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns([3, 2], gap="large")
+    c1.markdown(cg_barres_html(q, vots) + f"<div class='cg-frase'>{frase}</div>", unsafe_allow_html=True)
+    c2.markdown(cg_top_html(sa), unsafe_allow_html=True)
+    ultima = idx + 1 >= n_q
+    st.button("🏆 VEURE EL PODI" if ultima else "▶️ SEGÜENT PREGUNTA", key="cg_m_seg",
+              use_container_width=True, on_click=sala_avanca, args=(pin, "resultat", idx))
+
+
+def cg_respon(opcio):
+    ss = st.session_state
+    sala_respon(ss.cg_pin, ss.cg_pid, opcio)    # res es desa: ni punts ni medalla
+
+
+@st.fragment(run_every=1)
+def cg_jugador():
+    """El mobil de cada jugador: el seu animal, quatre botons grans i com li ha anat."""
+    ss = st.session_state
+    sa = sala_estat(ss.cg_pin, ss.cg_pid)
+    jo = sa["jugadors"].get(ss.cg_pid) if sa else None
+    if jo is None:
+        msg = ("Aquesta sala ja és plena.<br>Podeu crear-ne una altra o jugar sols." if ss.cg_avis == "plena" else
+               "Aquesta partida ja no hi és.<br>Quan la pantalla gran en tingui una de nova, escaneja'n el QR.")
+        st.markdown(f"<div class='cq-feedback espera'>{msg}</div>", unsafe_allow_html=True)
+        if st.button("🏠 INICI", key="cg_j_inici", use_container_width=True):
+            cg_surt()
+            st.rerun(scope="app")
+        return
+    fase, idx, n_q = sa["fase"], sa["idx"], len(sa["preguntes"])
+    pos = {pid: p for p, pid, _ in sala_classificacio(sa)}[ss.cg_pid]
+    n = len(sa["jugadors"])
+
+    if fase == "espera":
+        st.markdown(f"<div class='cg-jo-centre'>{cg_av(jo, 'gran')}</div>"
+                    "<div class='cq-feedback espera'>JA HI ETS! 🎉<br>Aquest és el teu animal.<br>"
+                    "Mira la pantalla gran: començarem de seguida</div>", unsafe_allow_html=True)
+        st.button("🚪 SORTIR", key="cg_j_surt", on_click=cg_surt)
+        return
+    st.markdown(f"<div class='cg-jo'>{cg_av(jo, 'mig')}<span>⭐ {_cq_punts(jo['punts'])}</span></div>",
+                unsafe_allow_html=True)
+    if fase == "final":
+        medalla = {1: "🥇", 2: "🥈", 3: "🥉"}.get(pos, "🏁")
+        encerts = sum(r["encert"] for r in jo["respostes"].values())
+        st.markdown(f"<div class='cq-feedback si'>{medalla} POSICIÓ {pos} DE {n}<br>⭐ {_cq_punts(jo['punts'])} punts"
+                    f"<br>Has encertat {encerts} de {n_q}</div>"
+                    "<div class='cg-mini'>Mira el podi a la pantalla gran! Si es torna a jugar, la partida "
+                    "nova sortirà aquí sola.</div>", unsafe_allow_html=True)
+        st.button("🚪 SORTIR", key="cg_j_surt", on_click=cg_surt)
+        return
+    q = sa["preguntes"][idx]
+    meva = jo["respostes"].get(idx)
+    if fase == "pregunta" and meva is None:
+        queda = max(0, int(round(sa["segons"] - (time.time() - sa["t0"]))))
+        st.markdown(f"<div class='cg-cap'><span>PREGUNTA {idx + 1} DE {n_q}</span>"
+                    f"<span class='cq-temps{' poc' if queda <= 5 else ''}'>{queda}</span></div>",
+                    unsafe_allow_html=True)
+        with st.container(key="cg_botons"):
+            for fila in ((0, 1), (2, 3)):
+                cols = st.columns(2)
+                for col, i in zip(cols, fila):
+                    col.button(f"{CONCURS_FORMES[i][0]}  {q['opcions'][i]}", key=f"cg_op_{i}",
+                               use_container_width=True, on_click=cg_respon, args=(i,))
+        return
+    if fase == "pregunta":
+        st.markdown("<div class='cq-feedback espera'>RESPOSTA ENVIADA! ✅<br>Esperem la resta...</div>",
+                    unsafe_allow_html=True)
+        return
+    # resultat
+    bona = f"{CONCURS_FORMES[q['correcta']][0]} {q['opcions'][q['correcta']]}"
+    if meva and meva["encert"]:
+        ratxa = f"<br>🔥 {meva['ratxa']} seguides: +{meva['bonus']}" if meva["bonus"] else ""
+        st.markdown(f"<div class='cq-feedback si'>CORRECTE! 🎉<br>+{_cq_punts(meva['punts'])} punts{ratxa}</div>",
+                    unsafe_allow_html=True)
+    elif meva:
+        st.markdown(f"<div class='cq-feedback no'>INCORRECTE 💪<br>Era {bona}</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"<div class='cq-feedback no'>S'HA ACABAT EL TEMPS ⏰<br>Era {bona}</div>",
+                    unsafe_allow_html=True)
+    st.markdown(f"<div class='cg-titol'>POSICIÓ {pos} DE {n}</div>", unsafe_allow_html=True)
+
+
+def cg_crea():
+    ss = st.session_state
+    tema = ss.cg_tema if ss.cg_tema in {t for _, t in CONCURS_TEMES} else "barreja"
+    nivell, n, seg = ss.cg_nivell or "Fàcil", ss.cg_n or 10, ss.cg_seg or 20
+    if ss.cg_pin and ss.cg_edita:
+        sala_config(ss.cg_pin, tema, nivell, n, seg)
+        ss.cg_edita = False
+        return
+    pin = sala_crea(tema, nivell, n, seg)
+    if pin:
+        ss.update(cg_pin=pin, cg_rol="mestre", cg_edita=False, cg_avis="")
+    else:
+        ss.cg_avis = "Ara mateix hi ha massa partides obertes. Torna-ho a provar d'aquí a una estona."
+
+
+def cg_tria():
+    """La pantalla gran tria tema, nivell, preguntes i segons, i crea la sala."""
+    ss = st.session_state
+    editant = bool(ss.cg_pin) and ss.cg_edita
+    if not editant:
+        st.markdown("<div class='cq-info'>Aquesta serà la <b>pantalla gran</b> (projector, pissarra digital o "
+                    "ordinador). Cadascú hi entra escanejant el QR amb el mòbil o la tauleta: no cal escriure "
+                    "res i a cadascú li toca un animal.</div>", unsafe_allow_html=True)
+    # st.radio i no st.pills/segmented_control: l'AppTest de Streamlit 1.50 no sap llegir-los (18 nov 2026)
+    noms = {t: l for l, t in CONCURS_TEMES}
+    st.radio("Tema", [t for _, t in CONCURS_TEMES], key="cg_tema", format_func=noms.get, horizontal=True)
+    st.radio("Nivell", [d for d, _ in DIFFS], key="cg_nivell", horizontal=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.radio("Preguntes", list(CG_N), key="cg_n", horizontal=True)
+    with c2:
+        st.radio("Segons per pregunta", list(CG_SEGONS), key="cg_seg", horizontal=True)
+    st.button("✅ FET" if editant else "✨ CREAR LA SALA", key="cg_crea", use_container_width=True, on_click=cg_crea)
+    if ss.cg_avis:
+        st.markdown(f"<div class='cq-info'>{ss.cg_avis}</div>", unsafe_allow_html=True)
+    st.button("🔙 TORNAR", key="cg_tria_torna",
+              on_click=lambda: ss.update(cg_edita=False) if editant else ss.update(cq_mode=None, cg_avis=""))
+
+
+def cg_entra_num():
+    """Alternativa al QR: el numero de sala que surt petit a la pantalla gran."""
+    ss = st.session_state
+    pin = "".join(ch for ch in (ss.cg_num or "") if ch.isdigit())
+    ss.cg_num = ""
+    if len(pin) == 4:
+        st.query_params["sala"] = pin       # i cg_entra_per_url() hi entra, com amb el QR
+
+
+def cg_portada():
+    """CONCURS: jugar sol (com sempre) o en grup amb una pantalla gran."""
+    ss = st.session_state
+    c1, c2 = st.columns(2)
+    with c1:
+        st.button("👤 JUGAR SOL", key="cq_sol", use_container_width=True,
+                  on_click=lambda: ss.update(cq_mode="sol", cq=None))
+        st.markdown("<div class='desc'>Tria tema i nivell, i bat el teu rècord</div>", unsafe_allow_html=True)
+    with c2:
+        st.button("📺 JUGAR EN GRUP (PANTALLA GRAN)", key="cq_grup", use_container_width=True,
+                  on_click=lambda: ss.update(cq_mode="grup", cg_edita=False,
+                                             cg_rol="mestre" if ss.cg_rol == "mestre" else None))
+        st.markdown("<div class='desc'>Una pantalla gran fa les preguntes i cadascú respon des del seu mòbil "
+                    "o tauleta</div>", unsafe_allow_html=True)
+    st.markdown("<div class='cq-info' style='margin-top:16px;'>📷 Per entrar a una partida en grup, escaneja "
+                "amb la càmera el QR de la pantalla gran.</div>", unsafe_allow_html=True)
+    with st.expander("No pots fer servir la càmera?"):
+        st.text_input("Número de sala (el petit que surt sota el QR)", key="cg_num", max_chars=4,
+                      on_change=cg_entra_num)
+        st.button("ENTRAR", key="cg_entra", on_click=cg_entra_num)
+
+
+def concurs():
+    ss = st.session_state
+    if ss.cq_mode == "sol":
+        concurs_solo()
+    elif ss.cq_mode == "grup" and ss.cg_rol == "jugador":
+        cg_jugador()
+    elif ss.cq_mode == "grup" and ss.cg_rol == "mestre" and ss.cg_pin and not ss.cg_edita:
+        cg_mestre()
+    elif ss.cq_mode == "grup":
+        cg_tria()
+    else:
+        cg_portada()
+
+
+def cg_entra_per_url():
+    """S'ha obert l'app amb ?sala=<PIN> (el QR): entra sola a la sala, sense escriure res.
+    Despres de la primera vegada, l'adreca porta tambe ?jo=<id a l'atzar> i, si es recarrega la
+    pagina, es torna a ser el mateix animal (no un de nou)."""
+    ss = st.session_state
+    pin = st.query_params.get("sala", "")
+    if not pin or (ss.cg_rol == "jugador" and ss.cg_pin == pin):
+        return
+    if not (len(pin) == 4 and pin.isdigit()):
+        del st.query_params["sala"]
+        return
+    pid = st.query_params.get("jo", "")
+    if not (len(pid) == 12 and all(c in "0123456789abcdef" for c in pid)):
+        pid = ss.cg_pid if len(ss.cg_pid) == 12 else uuid.uuid4().hex[:12]
+    ss.cg_pid = pid
+    res = sala_entra(pin, pid)
+    ss.update(current_block="Concurs", cq_mode="grup", cg_rol="jugador", cg_pin=pin, cg_edita=False,
+              cg_avis="" if res == "ok" else res)
+    if res == "ok":
+        st.query_params["jo"] = pid
 
 
 # ----------------------------------------------------------------- RENDER
@@ -2482,6 +3159,7 @@ with st.container(key="amagat_dispositiu"):
     st.markdown("<style>.st-key-amagat_dispositiu{display:none !important;}</style>", unsafe_allow_html=True)
     st.text_input("dispositiu", key="dispositiu", on_change=on_dispositiu, label_visibility="collapsed")
     components.html(dispositiu_html(), height=0)
+cg_entra_per_url()          # si s'ha obert amb el QR d'una sala (?sala=<PIN>), hi entra sola
 render_header()
 
 if st.session_state.current_block == "Home":
@@ -2635,9 +3313,19 @@ else:
         f".st-key-{k} div.stButton > button {{ background: linear-gradient(180deg,#20BF6B 0%,#0FA45B 100%) !important;"
         f" box-shadow: 0 5px 0px #0B7A45 !important; }}" for k in active) + "</style>", unsafe_allow_html=True)
 
+    # Concurs en grup: sense nivells ni menu lateral (el nivell es tria en crear la sala)
+    cq_grup = ss.current_block == "Concurs" and ss.cq_mode == "grup"
+    if cq_grup:
+        st.markdown("<style>div[data-testid='stMainBlockContainer'] { padding-top: 1.2rem !important; }</style>",
+                    unsafe_allow_html=True)
     # Barra sempre visible (si la sidebar es col.lapsa, els botons segueixen aqui)
     with st.container(key="controlbar"):
-        if ss.current_block == "Lletres":
+        if cq_grup:
+            if ss.cg_rol != "jugador":      # el mobil del jugador surt amb el seu boto SORTIR
+                cols = st.columns([1, 5])
+                cols[0].button("🏠", key="ctl_home", use_container_width=True,
+                               on_click=lambda: st.session_state.update(current_block="Home"))
+        elif ss.current_block == "Lletres":
             # Nomes nivell basic: aqui es tria abecedari o numeros, no dificultat
             cols = st.columns([1, 2, 2])
             cols[0].button("🏠", key="ctl_home", use_container_width=True,
@@ -2676,33 +3364,34 @@ else:
                 col.button(label, key=f"ctl_gop_{op}", use_container_width=True,
                            on_click=set_golut_op, args=(op,))
 
-    with st.sidebar:
-        st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
-        st.markdown(f"<div class='chip'>⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
-        st.markdown("---")
-        if st.button("🏠 INICI", key="sb_home", use_container_width=True):
-            ss.current_block = "Home"; safe_rerun()
-        st.markdown("---")
-        if ss.current_block == "Mates":
-            for label, mode, slug in OPS:
-                if st.button(label, key=f"sb_op_{slug}", use_container_width=True):
-                    set_mode(mode); safe_rerun()
+    if not cq_grup:
+        with st.sidebar:
+            st.markdown("<h2 style='font-family:Bungee;'>MENU</h2>", unsafe_allow_html=True)
+            st.markdown(f"<div class='chip'>⭐ {ss.punts} · 🔥 {ss.ratxa}</div>", unsafe_allow_html=True)
             st.markdown("---")
-        if ss.current_block == "Golut":
-            for label, op in GOLUT_OPS:
-                if st.button(label, key=f"sb_gop_{op}", use_container_width=True):
-                    set_golut_op(op); safe_rerun()
+            if st.button("🏠 INICI", key="sb_home", use_container_width=True):
+                ss.current_block = "Home"; safe_rerun()
             st.markdown("---")
-        if ss.current_block == "Calcul":
-            for label, kind in CALCUL_KINDS:
-                key = "sb_kind_" + slugify(kind)
-                if st.button(label, key=key, use_container_width=True):
-                    set_calcul_kind(kind); safe_rerun()
-            st.markdown("---")
-        if ss.current_block not in SENSE_NIVELL:
-            for label, slug in DIFFS:
-                if st.button(label.upper(), key=f"sb_lvl_{slug}", use_container_width=True):
-                    set_diff(label); safe_rerun()
+            if ss.current_block == "Mates":
+                for label, mode, slug in OPS:
+                    if st.button(label, key=f"sb_op_{slug}", use_container_width=True):
+                        set_mode(mode); safe_rerun()
+                st.markdown("---")
+            if ss.current_block == "Golut":
+                for label, op in GOLUT_OPS:
+                    if st.button(label, key=f"sb_gop_{op}", use_container_width=True):
+                        set_golut_op(op); safe_rerun()
+                st.markdown("---")
+            if ss.current_block == "Calcul":
+                for label, kind in CALCUL_KINDS:
+                    key = "sb_kind_" + slugify(kind)
+                    if st.button(label, key=key, use_container_width=True):
+                        set_calcul_kind(kind); safe_rerun()
+                st.markdown("---")
+            if ss.current_block not in SENSE_NIVELL:
+                for label, slug in DIFFS:
+                    if st.button(label.upper(), key=f"sb_lvl_{slug}", use_container_width=True):
+                        set_diff(label); safe_rerun()
 
     with st.container(key="maincard"):
         if ss.current_block == "Repte":
@@ -2716,7 +3405,12 @@ else:
             st.markdown(f"<h3>SOPA DE LLETRES • {ss.diff.upper()} • TROBA {len(ss.sopa['words'])} PARAULES</h3>",
                         unsafe_allow_html=True)
         elif ss.current_block == "Concurs":
-            st.markdown(f"<h3>🎯 CONCURS • {ss.diff.upper()}</h3>", unsafe_allow_html=True)
+            if ss.cq_mode == "sol":
+                st.markdown(f"<h3>🎯 CONCURS • {ss.diff.upper()}</h3>", unsafe_allow_html=True)
+            elif not cq_grup:
+                st.markdown("<h3>🎯 CONCURS</h3>", unsafe_allow_html=True)
+            elif ss.cg_rol != "jugador" and not (ss.cg_pin and not ss.cg_edita):   # en joc, tot el lloc per al joc
+                st.markdown("<h3>🎯 CONCURS EN GRUP</h3>", unsafe_allow_html=True)
         elif ss.current_block == "Golut":
             nom_op = dict((o, l.split(" ", 1)[1]) for l, o in GOLUT_OPS)[ss.golut_op]
             st.markdown(f"<h3>MONSTRE GOLUT • {ss.diff.upper()} • {nom_op}</h3>", unsafe_allow_html=True)
@@ -2802,7 +3496,7 @@ else:
             st.button("fet", key="sopa_done", on_click=sopa_completada)
             st.button("🔁 NOVA SOPA", key="sopa_nova", use_container_width=True, on_click=new_problem)
         elif ss.current_block == "Concurs":
-            concurs_solo()
+            concurs()
         elif ss.current_block == "Golut":
             golut_component(ss.golut, f"{ss.diff}-{ss.golut_op}-{ss.golut_n}")
             st.button("🔁 UN ALTRE MONSTRE", key="golut_nou", use_container_width=True, on_click=new_problem)
@@ -2846,7 +3540,7 @@ else:
                     st.warning("Escriu un número abans de comprovar 😉")
                 else:
                     check_answer(int(val)); safe_rerun()
-        if ss.current_block not in SENSE_NIVELL:
+        if ss.current_block not in SENSE_NIVELL and not cq_grup:
             st.markdown(f"<div class='scoreboard'><div class='chip'>⭐ {ss.punts}</div><div class='chip'>🔥 RATXA: {ss.ratxa}</div></div>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------- OVERLAY
