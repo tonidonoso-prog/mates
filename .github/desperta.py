@@ -1,5 +1,5 @@
 """Entra a l'app com un visitant perque Streamlit Cloud no l'adormi (la fa servir la tasca
-.github/workflows/desperta.yml cada 6 hores). No fa cap exercici: no escriu res enlloc."""
+.github/workflows/desperta.yml cada hora). No fa cap exercici: no escriu res enlloc."""
 import time
 
 from playwright.sync_api import sync_playwright
