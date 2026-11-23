@@ -250,7 +250,8 @@
   function enunciatHtml(p) {
     // si l'enunciat ja porta "?" (7 + ? = 10), la casella va al seu lloc; si no, va al final
     let t = esc(p[0]).replace(/ x /g, " × ").replace(/ - /g, " − ");
-    if (p[2]) return `<div class="piramide">${p[2]}</div><p class="operacio petita">${caixaEscrit()}</p>`;
+    // piràmide: la resposta s'escriu a la pedra de dalt (abans hi havia un segon "?" a sota que confonia)
+    if (p[2]) return `<div class="piramide">${p[2].replace("<div class='brick ask'>?</div>", "<div class='brick ask'>" + caixaEscrit() + "</div>")}</div>`;
     const llarg = p[0].length > 16;
     t = t.indexOf("?") >= 0 ? t.replace("?", caixaEscrit()) : t + " = " + caixaEscrit();
     return `<p class="operacio${llarg ? " llarga" : ""}">${t}</p>`;
@@ -273,7 +274,7 @@
       ${nivells()}
       ${triaOps}${comptador}
       <section class="exercici">
-        <div class="pregunta mates-pregunta">${p ? enunciatHtml(p) : "<p class='carregant'>Preparant…</p>"}</div>
+        <div class="pregunta mates-pregunta">${p && p[4] ? `<p class="consigna">${esc(p[4])}</p>` : ""}${p ? enunciatHtml(p) : "<p class='carregant'>Preparant…</p>"}</div>
         <p class="avis" id="avis"></p>
         <div class="teclat">${tecles}</div>
       </section>`;

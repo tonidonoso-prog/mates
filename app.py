@@ -3318,6 +3318,22 @@ IMG_BLOC = {"Mates": "mates", "Calcul": "calcul", "Lectura": "lectura", "Lletres
             "Repte": "repte"}
 
 
+# Una frase per a cada tipus de calcul mental: sense ella la piramide no l'entenia ningu (24 nov 2026, el Toni)
+AJUDA_CALCUL = {
+    "Amics": "Quin número falta perquè la suma doni el número rodó?",
+    "Descompon": "El número està partit en trossos. Quin tros falta?",
+    "Dobles": "El doble és sumar el número dues vegades.",
+    "Meitats": "La meitat és partir el número en dos trossos iguals.",
+    "Sèries": "Mira com canvien els números. Quin ve després?",
+    "Piràmide": "Cada pedra és la suma de les dues de sota. Quin número va a dalt?",
+    "Repartir": "Reparteix-ho en grups iguals. Quants n'hi toquen a cada grup?",
+    "Desenes": "Una desena són 10. Quantes desenes hi caben?",
+    "Inversa": "Quin número falta a la multiplicació?",
+    "Suma3": "Suma els tres números.",
+    "Problema": "Llegeix el problema i fes el càlcul.",
+}
+
+
 def compta_respostes(respostes):
     """Suma un grapat de respostes i desa UNA sola vegada (el servidor castiga les rafegues)."""
     ss = st.session_state
@@ -3389,18 +3405,21 @@ def _fes_accio(val):
         noms = {k: l.capitalize() for l, k in CALCUL_KINDS}
         if joc == "Mates":
             op = op if op in {m for _, m, _ in OPS} else "Sumes"
-            problemes = [[*make_math(nivell, op), None, op] for _ in range(20)]
+            problemes = [[*make_math(nivell, op), None, op, ""] for _ in range(20)]
         elif joc == "Calcul":
             op = op if op in noms else "Tots"
-            problemes = [list(make_calcul(nivell, op)) + [noms.get(op, "")] for _ in range(20)]
+            problemes = []
+            for _ in range(20):
+                k = random.choice(CALCUL_ALL) if op == "Tots" else op
+                problemes.append(list(make_calcul(nivell, k)) + [noms[k], AJUDA_CALCUL.get(k, "")])
         else:          # REPTE: 10 barrejats, mitat operacions i mitat calcul mental, al nivell triat
             problemes = []
             for _ in range(REPTE_LEN):
                 if random.random() < 0.5:
-                    problemes.append([*make_math(nivell, random.choice([m for _, m, _ in OPS])), None, "Càlcul"])
+                    problemes.append([*make_math(nivell, random.choice([m for _, m, _ in OPS])), None, "Càlcul", ""])
                 else:
                     k = random.choice(CALCUL_ALL)
-                    problemes.append(list(make_calcul(nivell, k)) + [noms[k]])
+                    problemes.append(list(make_calcul(nivell, k)) + [noms[k], AJUDA_CALCUL.get(k, "")])
         ss.nou_lot = {"id": val.get("id"), "joc": joc, "op": op or "", "nivell": nivell, "problemes": problemes}
     elif accio == "resultats":
         compta_respostes(val.get("respostes", [])[:20])
