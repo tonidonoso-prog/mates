@@ -163,6 +163,10 @@
     alcada();
   }
 
+  // Botons de navegació amb text: la fletxa sola no s'entenia (24 nov 2026, el Toni)
+  const botoInici = (fa) => `<button class="nav inici" data-fa="${fa || "inici"}"><img src="${img("casa")}" alt="">Inici</button>`;
+  const botoEnrere = (fa, text) => `<button class="nav" data-fa="${fa}"><span aria-hidden="true">‹</span> ${text}</button>`;
+
   function nivells() {
     return "<div class='nivells' role='group' aria-label='Nivell'>" + A.nivells.map((n) =>
       `<button data-fa="nivell" data-arg="${esc(n)}" aria-pressed="${n === A.nivell}">${esc(n)}</button>`).join("") + "</div>";
@@ -187,17 +191,20 @@
       `<button class="gominola" style="--c:${COLORS[(i + 2) % COLORS.length]}" data-fa="cat" data-arg="${esc(c.id)}">
         <img src="${img(c.img)}" alt=""><span class="nom">${esc(c.nom)}</span><span class="desc">${c.temes.length} temes</span></button>`).join("");
     $app.innerHTML = `
-      <div class="barra"><button class="tornar" data-fa="inici" aria-label="Tornar a l'inici">‹</button>
-        <img class="mini" src="${img("concurs")}" alt=""><h1>Kahoot</h1></div>
+      <nav class="navegacio">${botoInici()}</nav>
+      <div class="barra"><img class="mini" src="${img("concurs")}" alt=""><h1>Kahoot</h1></div>
       <p class="ajuda">Tria de què vols les preguntes. ${A.n_preguntes} preguntes, com més ràpid, més punts!</p>
       ${nivells()}
       <section class="categories">
         <button class="gominola" style="--c:#E8701F" data-fa="tema" data-arg="barreja">
           <img src="${img("barreja")}" alt=""><span class="nom">Barreja de tot</span><span class="desc">Una mica de cada</span></button>
         ${cats}
-        <button class="gominola llarga" style="--c:#7A5AF0" data-fa="grup">
-          <img src="${img("festa")}" alt=""><span class="nom">Jugar en grup amb una pantalla gran</span></button>
-      </section>`;
+      </section>
+      <h2 class="seccio">Tota la classe alhora</h2>
+      <button class="targeta-grup" data-fa="grup">
+        <img src="${img("festa")}" alt="">
+        <span><b>Kahoot en grup</b>Una pantalla gran per a tothom i cada nen o nena respon amb el seu mòbil o tauleta.</span>
+        <span class="fletxa" aria-hidden="true">›</span></button>`;
   }
 
   function pintaTemes() {
@@ -206,8 +213,8 @@
     const temes = [`<button class="tema barreja" data-fa="tema" data-arg="barreja_${esc(c.id)}">🎲 Barreja${rec("barreja_" + c.id)}</button>`]
       .concat(c.temes.map((t) => `<button class="tema" data-fa="tema" data-arg="${esc(t.id)}">${esc(t.nom)}${rec(t.id)}</button>`)).join("");
     $app.innerHTML = `
-      <div class="barra"><button class="tornar" data-fa="categories" aria-label="Tornar a les categories">‹</button>
-        <img class="mini" src="${img(c.img)}" alt=""><h1>${esc(c.nom)}</h1></div>
+      <nav class="navegacio">${botoEnrere("categories", "Categories")}${botoInici()}</nav>
+      <div class="barra"><img class="mini" src="${img(c.img)}" alt=""><h1>${esc(c.nom)}</h1></div>
       ${nivells()}
       <section class="temes">${temes}</section>`;
   }
@@ -272,8 +279,8 @@
       `<button class="tecla${t === "ok" ? " ok" : t === "esborra" ? " esborra" : ""}" data-fa="tecla" data-arg="${t}"
         aria-label="${t === "ok" ? "Comprovar" : t === "esborra" ? "Esborrar" : t}">${t === "ok" ? "✓" : t === "esborra" ? "⌫" : t}</button>`).join("");
     $app.innerHTML = `
-      <div class="barra"><button class="tornar" data-fa="mates_inici" aria-label="Tornar a l'inici">‹</button>
-        <img class="mini" src="${img(J.img)}" alt=""><h1>${J.titol}</h1>
+      <nav class="navegacio">${botoInici("mates_inici")}</nav>
+      <div class="barra"><img class="mini" src="${img(J.img)}" alt=""><h1>${J.titol}</h1>
         <span class="xips"><span class="xip">⭐ ${M.punts}</span><span class="xip">🔥 ${M.ratxa}</span></span></div>
       ${nivells()}
       ${triaOps}${comptador}
@@ -427,8 +434,8 @@
       `<button class="tecla${t === "ok" ? " ok" : t === "esborra" ? " esborra" : ""}" data-fa="tecla" data-arg="${t}"
         aria-label="${t === "ok" ? "Comprovar" : t === "esborra" ? "Esborrar" : t}">${t === "ok" ? "✓" : t === "esborra" ? "⌫" : t}</button>`).join("");
     $app.innerHTML = `
-      <div class="barra"><button class="tornar" data-fa="recta_inici" aria-label="Tornar a l'inici">‹</button>
-        <img class="mini" src="${img("recta")}" alt=""><h1>Recta numèrica</h1>
+      <nav class="navegacio">${botoInici("recta_inici")}</nav>
+      <div class="barra"><img class="mini" src="${img("recta")}" alt=""><h1>Recta numèrica</h1>
         <span class="xips"><span class="xip">⭐ ${RT.punts}</span><span class="xip">🔥 ${RT.ratxa}</span></span></div>
       ${nivells()}
       <div class="ops" role="group" aria-label="Operació">
@@ -520,7 +527,7 @@
         <p class="avis" id="avis"></p>
         <div class="respostes">${q.opcions.map((o, i) =>
           `<button class="resposta" style="--c:${RESP[i][1]}" data-fa="resposta" data-arg="${i}"><span class="forma" aria-hidden="true">${RESP[i][0]}</span>${esc(o)}</button>`).join("")}</div>
-        <button class="sortir" data-fa="sortir">Sortir de la partida</button>
+        <div class="sortida"><button class="boto-sortir" data-fa="sortir">🚪 Sortir de la partida</button></div>
       </section>`;
     window.scrollTo(0, 0);
     atura();
