@@ -10,6 +10,7 @@ import random
 import time
 import json
 import re
+import importlib
 import concurs_temes as CT
 import datetime
 from zoneinfo import ZoneInfo
@@ -76,6 +77,18 @@ def slugify(txt):
                       .replace("í", "i").replace("ó", "o").replace("ú", "u"))
 REPTE_LEN = 10  # exercicis per sessio
 BASE_DIR = Path(__file__).parent
+
+
+def _signatura_temes():
+    fs = [BASE_DIR / "concurs_temes.py", *sorted((BASE_DIR / "temes_extra").glob("*.py"))]
+    return tuple((f.name, f.stat().st_mtime_ns) for f in fs if f.exists())
+
+
+# Streamlit Cloud torna a llegir app.py a cada canvi pero NO els moduls que importa: si nomes
+# canviaven les preguntes, l'app seguia amb les velles (23 nov 2026). Es recarrega si han canviat.
+if getattr(CT, "_signatura", None) != _signatura_temes():
+    CT = importlib.reload(CT)
+    CT._signatura = _signatura_temes()
 
 # Cap nom: hi juguen menors i son dades protegides (17 nov 2026, el Toni: "no podemos dar en ningun
 # sitio que escriban el nombre, es confidencial"). Cada mobil o tauleta te un identificador a l'atzar
@@ -729,18 +742,36 @@ def concurs_pregunta(tema, diff):
     return {"text": text, "emoji": emoji, "opcions": ops, "correcta": ops.index(correcta)}
 
 
-def concurs_preguntes(tema, diff, n):
-    out, vistes = [], set()
-    for _ in range(n * 30):
+def cq_clau(q):
+    """Identifica una pregunta ("el mes gran" es repeteix amb altres numeros: hi va la resposta)."""
+    return q["text"] + q["emoji"] + q["opcions"][q["correcta"]]
+
+
+def concurs_preguntes(tema, diff, n, evita=()):
+    """n preguntes diferents. Primer les que no son a 'evita' (les ja vistes); si el tema no en
+    te prou de noves, s'omple amb vistes (i qui crida torna a comencar la llista)."""
+    out, repes, vistes = [], [], set()
+    for _ in range(n * 40):
         q = concurs_pregunta(tema, diff)
-        clau = q["text"] + q["emoji"] + q["opcions"][q["correcta"]]   # "el mes gran" es repeteix amb altres numeros
+        clau = cq_clau(q)
         if clau in vistes or len(set(q["opcions"])) < 4:
             continue
         vistes.add(clau)
+        if clau in evita:
+            repes.append(q)
+            continue
         out.append(q)
         if len(out) == n:
             break
-    return out
+    return out + repes[:n - len(out)]
+
+
+@st.cache_resource
+def _cq_memoria():
+    """Preguntes ja vistes per (dispositiu, tema, nivell), perque no surtin les mateixes cada dia
+    (23 nov 2026, el Toni: "que no se vayan repitiendo"). A la memoria del servidor: sense noms,
+    nomes el numero a l'atzar del dispositiu. Es perd si Streamlit reinicia l'app (no passa res)."""
+    return {}
 
 
 # ============================================================ CONCURS EN GRUP (pantalla gran)
@@ -2709,8 +2740,16 @@ def _cq_punts(n):
 
 def _cq_comenca(tema):
     ss = st.session_state
+    # vistes d'aquest dispositiu (o d'aquesta sessio, si encara no sabem quin dispositiu es)
+    mem = _cq_memoria() if ss.jugador else ss.setdefault("cq_vistes_sessio", {})
+    vistes = mem.setdefault((ss.jugador, tema, ss.diff), {})
+    preguntes = concurs_preguntes(tema, ss.diff, CONCURS_N, vistes)
+    claus = [cq_clau(q) for q in preguntes]
+    if any(c in vistes for c in claus):
+        vistes.clear()                 # ja les ha vistes totes: es torna a comencar
+    vistes.update(dict.fromkeys(claus))
     ss.cq = {"tema": tema, "nivell": ss.diff, "segons": CONCURS_SEGONS[ss.diff],
-             "preguntes": concurs_preguntes(tema, ss.diff, CONCURS_N), "idx": 0,
+             "preguntes": preguntes, "idx": 0,
              "t0": time.time(), "resposta": None, "punts": 0, "encerts": 0, "fase": "pregunta"}
 
 

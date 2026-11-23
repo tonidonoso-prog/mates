@@ -11,7 +11,10 @@ Si un nivell es queda amb poques preguntes, s'hi afegeixen les dels altres.
 Els temes que fan servir dades de app.py (sumes, restes, taules, calcul, animals, lletra) es
 generen alla; aqui nomes hi ha el seu nom i la seva categoria.
 """
+import importlib
+import pkgutil
 import random
+from pathlib import Path
 
 # ------------------------------------------------------------------ categories
 CATEGORIES = [
@@ -26,6 +29,32 @@ NOM_CATEGORIA = dict(CATEGORIES)
 TEMES = []
 _GEN = {}           # id -> funcio(diff) que torna una pregunta
 NIVELLS = {"Fàcil": 0, "Normal": 1, "Difícil": 2}
+
+
+# ---------------------------------------------- preguntes de mes (temes_extra/*.py, 23 nov 2026)
+# Cada fitxer te EXTRA = {tema: "linies"} i, si cal, GRUPS = {tema: {grup: "emoji nom, ..."}}.
+# Les linies mal formades no peten l'app: van a PROBLEMES (el test exigeix que estigui buida).
+PROBLEMES = []
+
+
+def _carrega_extra():
+    extra, grups = {}, {}
+    carpeta = Path(__file__).parent / "temes_extra"
+    for m in sorted(pkgutil.iter_modules([str(carpeta)]), key=lambda m: m.name):
+        try:
+            mod = importlib.reload(importlib.import_module(f"temes_extra.{m.name}"))   # sempre l'ultima versio
+        except Exception as e:                       # un fitxer trencat no pot tombar el concurs
+            PROBLEMES.append((m.name, repr(e)))
+            continue
+        for k, v in getattr(mod, "EXTRA", {}).items():
+            extra[k] = extra.get(k, "") + "\n" + v
+        for k, gs in getattr(mod, "GRUPS", {}).items():
+            for g, v in gs.items():
+                grups.setdefault(k, {})[g] = grups.get(k, {}).get(g, "") + ", " + v
+    return extra, grups
+
+
+_EXTRA, _GRUPS_EXTRA = _carrega_extra()
 
 
 def _tema(tid, label, cat):
@@ -73,9 +102,10 @@ def _enganyoses_num(ans, salts=(1, 2, 3, 10), minim=0):
     return pool
 
 
-def _linies(txt):
-    """Linies 'camp | camp | ...' amb el nivell (0, 1 o 2 estrelles al davant)."""
-    out = []
+def _linies(txt, tid="", camps=None):
+    """Linies 'camp | camp | ...' amb el nivell (0, 1 o 2 estrelles al davant).
+    camps: (minim, maxim) de camps; les que no hi encaixen van a PROBLEMES. Sense repetides."""
+    out, vistes = [], set()
     for l in txt.strip().splitlines():
         l = l.strip()
         if not l or l.startswith("#"):
@@ -83,7 +113,16 @@ def _linies(txt):
         n = 0
         while l.startswith("*"):
             n, l = n + 1, l[1:]
-        out.append((n, [p.strip() for p in l.split("|")]))
+        p = [x.strip() for x in l.split("|")]
+        obligats = p[2:] if camps == (3, 3) else p[1:]      # a les taules la clau pot ser buida
+        if camps and not (camps[0] <= len(p) <= camps[1]) or any(not x for x in obligats):
+            PROBLEMES.append((tid, l))
+            continue
+        clau = (p[0], p[1].lower())          # "Quina emocio es?" es repeteix amb emojis diferents
+        if clau in vistes:
+            continue
+        vistes.add(clau)
+        out.append((n, p))
     return out
 
 
@@ -95,10 +134,9 @@ def _del_nivell(items, diff, minim=12):
 
 def banc(tid, label, cat, txt):
     """Linia: emoji | pregunta | bona | enganyosa | enganyosa | enganyosa [| mes enganyoses]"""
-    items = _linies(txt)
-    for n, p in items:
-        assert len(p) >= 6, (tid, p)
-    _tema(tid, label, cat)
+    items = _linies(txt + _EXTRA.get(tid, ""), tid, (6, 20))
+    if label:
+        _tema(tid, label, cat)
 
     def gen(diff):
         _, (emoji, preg, bona, *falses) = random.choice(_del_nivell(items, diff))
@@ -110,11 +148,10 @@ def banc(tid, label, cat, txt):
 def taula(tid, label, cat, plantilla, txt, amb_de=False):
     """Linia: emoji | clau | valor. Pregunta = plantilla amb {clau}; enganyoses = altres valors.
     amb_de: la clau va precedida de 'de' apostrofat ('el contrari d'alt', 'el femeni d'avi')."""
-    items = _linies(txt)
-    for n, p in items:
-        assert len(p) == 3, (tid, p)
+    items = _linies(txt + _EXTRA.get(tid, ""), tid, (3, 3))
     valors = sorted({p[2] for _, p in items})
-    _tema(tid, label, cat)
+    if label:
+        _tema(tid, label, cat)
 
     def gen(diff):
         _, (emoji, clau, bona) = random.choice(_del_nivell(items, diff))
@@ -126,8 +163,12 @@ def taula(tid, label, cat, plantilla, txt, amb_de=False):
 
 def grups(tid, label, cat, plantilles, dades):
     """'Quin d'aquests es un X?': la bona del grup X i tres de grups diferents."""
-    g = {k: [x.strip() for x in v.split(",") if x.strip()] for k, v in dades.items()}
-    _tema(tid, label, cat)
+    g = {}
+    for k in set(dades) | set(_GRUPS_EXTRA.get(tid, {})):
+        tots = dades.get(k, "") + ", " + _GRUPS_EXTRA.get(tid, {}).get(k, "")
+        g[k] = list(dict.fromkeys(x.strip() for x in tots.split(",") if x.strip()))
+    if label:
+        _tema(tid, label, cat)
 
     def gen(diff):
         grup = random.choice([k for k in g if k in plantilles])
@@ -508,7 +549,6 @@ taula("en_colors_b", "", "", "Com es diu «{clau}» en català?", """
 | pink | rosa
 | grey | gris
 """)
-TEMES.pop()
 
 taula("en_animals", "🐶 ANIMALS EN ANGLÈS", "angles", "Com es diu aquest animal en anglès?", """
 🐶 | | dog
@@ -651,7 +691,6 @@ banc("menjars_b", "", "", """
 | Com es diu un animal que només menja plantes? | herbívor | carnívor | omnívor | insectívor
 | Com es diu un animal que només menja carn? | carnívor | herbívor | omnívor | vegetal
 """)
-TEMES.pop()        # 'menjars_b' no es un tema a part: es barreja dins 'menjars'
 
 taula("cries", "🐣 LES CRIES", "natura", "Com es diu la cria d'aquest animal?", """
 🐄 | | vedell
@@ -1110,7 +1149,6 @@ banc("instruments_b", "", "", """
 *🎹 | Quin instrument té tecles blanques i negres? | piano | guitarra | trompeta | arpa
 **🎹 | Quantes tecles té un piano normal? | 88 | 20 | 50 | 120
 """)
-TEMES.pop()
 
 banc("esports", "⚽ ESPORTS", "cultura", """
 ⚽ | Quants jugadors té un equip de futbol de grans al camp? | 11 | 9 | 15 | 20
@@ -1170,7 +1208,6 @@ grups("transports_g", "", "", {
     "aigua": "🚢 vaixell, ⛵ veler, 🛶 canoa, 🚤 llanxa",
     "terra": "🚗 cotxe, 🚌 autobús, 🚂 tren, 🚲 bicicleta, 🚜 tractor, 🏍️ moto",
 })
-TEMES.pop()
 
 banc("reciclatge", "♻️ RECICLATGE", "vida", """
 🧴 | On llencem una ampolla de plàstic? | 🟡 contenidor groc | 🔵 contenidor blau | 🟢 contenidor verd | 🟤 contenidor marró
@@ -1262,7 +1299,6 @@ _DIES_B = banc("dies_b", "", "", """
 🎉 | Quins dies no hi ha escola normalment? | dissabte i diumenge | dilluns i dimarts | dimecres i dijous | dijous i divendres
 📅 | Quin és el primer dia de la setmana a l'escola? | dilluns | diumenge | divendres | dimecres
 """)
-TEMES.pop()
 
 
 @generat("dies", "📅 DIES DE LA SETMANA", "temps")
@@ -1283,7 +1319,6 @@ banc("mesos_b", "", "", """
 *⏱️ | Quants minuts té una hora? | 60 | 100 | 24 | 30
 **⏱️ | Quants segons té un minut? | 60 | 100 | 10 | 24
 """)
-TEMES.pop()
 
 
 @generat("mesos", "🗓️ MESOS DE L'ANY", "temps")
@@ -1404,7 +1439,9 @@ _INTRUS = {
     "verdures": "🥕 pastanaga, 🥦 bròquil, 🥬 enciam, 🧅 ceba, 🥒 cogombre",
     "esports": "⚽ futbol, 🏀 bàsquet, 🎾 tennis, 🏊 natació, ⛷️ esquí",
 }
-_INTRUS = {k: [x.strip() for x in v.split(",")] for k, v in _INTRUS.items()}
+for _k, _v in _GRUPS_EXTRA.get("intrus", {}).items():
+    _INTRUS[_k] = _INTRUS.get(_k, "") + ", " + _v
+_INTRUS = {k: list(dict.fromkeys(x.strip() for x in v.split(",") if x.strip())) for k, v in _INTRUS.items()}
 _tema("intrus", "🕵️ L'INTRÚS", "logica")
 
 
