@@ -55,7 +55,7 @@ with sync_playwright() as p:
     chrome, webkit = p.chromium.launch(), p.webkit.launch()
     mestre = chrome.new_context(viewport={"width": 1280, "height": 900}).new_page()
     vigila(mestre, "pantalla gran")
-    mestre.goto(URL); espera(mestre, ".st-key-home_Concurs button", 90); time.sleep(1)
+    mestre.goto(URL.rstrip("/") + "/?antic=1"); espera(mestre, ".st-key-home_Concurs button", 90); time.sleep(1)
     mestre.locator(".st-key-home_Concurs button").first.click(); espera(mestre, ".st-key-cq_grup button")
     mestre.screenshot(path=f"{CAP}/grup_0_triar_desk.png")
     mestre.locator(".st-key-cq_grup button").first.click(); espera(mestre, ".st-key-cg_crea button")

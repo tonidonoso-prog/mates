@@ -34,7 +34,7 @@ with sync_playwright() as p:
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.on("request", lambda r: terc.add(r.url.split("/")[2]) if "giphy" in r.url else None)
-        pg.goto(URL); pg.wait_for_selector(".st-key-home_Mates button", timeout=90000); time.sleep(3)
+        pg.goto(URL.rstrip("/") + "/?antic=1"); pg.wait_for_selector(".st-key-home_Mates button", timeout=90000); time.sleep(3)
         assert pg.locator("input[type=text]:visible").count() == 0, "cap camp per escriure el nom"
         assert "nom i cognom" not in pg.content().lower()
         g1 = galeta(pg)
@@ -58,16 +58,14 @@ with sync_playwright() as p:
         pg.screenshot(path=f"{CAP}/festa_{tag}.png")
         assert w == 512 and "static/festa/" in src
         time.sleep(6)
-        # tornar a entrar: el mateix dispositiu, la mateixa medalla del dia
-        pg.goto(URL); pg.wait_for_selector(".st-key-home_cal button", timeout=90000); time.sleep(3)
+        # tornar a entrar (ara per la portada per defecte, la cara nova): el mateix dispositiu, sense cap camp
+        pg.goto(URL.rstrip("/") + "/"); pg.wait_for_selector("iframe[title='app.aventura']", timeout=90000); time.sleep(4)
         g2 = galeta(pg)
-        for _ in range(50):    # l'app rep l'identificador i carrega el calendari
-            cal = pg.locator(".st-key-home_cal button").first.inner_text()
-            if "⭐" in cal:
-                break
-            time.sleep(0.2)
-        print(eng, "en tornar:", g2, "|", cal)
-        assert g2 == g1 and "⭐ 1" in cal, (g1, g2, cal)
+        print(eng, "en tornar:", g2)
+        assert g2 == g1, (g1, g2)
+        f = pg.frame_locator("iframe[title='app.aventura']")
+        assert f.locator("input").count() == 0, "la cara nova no te cap camp per escriure"
+        assert "nom" not in " ".join(f.locator("label, input").all_inner_texts()).lower()
         print(eng, "giphy:", terc or "cap", "| errors JS:", errs)
         assert not terc and not errs
         pg.screenshot(path=f"{CAP}/portada_{tag}.png", full_page=True)

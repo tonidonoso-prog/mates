@@ -10,6 +10,18 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ".")
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
+# Aquests tests recorren la cara d'abans (la que fan servir els jocs encara no passats a la nova).
+_from_file = AppTest.from_file
+
+
+def _cara_antiga(*a, **k):
+    t = _from_file(*a, **k)
+    t.query_params["antic"] = "1"
+    return t
+
+
+AppTest.from_file = _cara_antiga
+
 # --- generador
 src = open("app.py", encoding="utf-8").read()
 ns = {"__file__": "app.py"}

@@ -3443,9 +3443,15 @@ def _fes_accio(val):
             ss.nou_avisos_n = ss.get("nou_avisos_n", 0) + 1
     elif accio == "antic":
         st.query_params.pop("nou", None)
+        st.query_params["antic"] = "1"
 
 
-if st.query_params.get("nou") == "1" and st.session_state.current_block == "Home":
+def vol_cara_antiga():
+    """La cara nova es la portada per defecte; ?antic=1 deixa la d'abans (sortida d'emergencia)."""
+    return st.query_params.get("antic") == "1"
+
+
+if not vol_cara_antiga() and st.session_state.current_block == "Home":
     nova_cara()
     st.stop()
 
@@ -3453,6 +3459,9 @@ render_header()
 
 if st.session_state.current_block == "Home":
     st.markdown(f"<p style='font-size:1.1rem;'>Hola! Tria la teva aventura d'avui!</p>", unsafe_allow_html=True)
+    if st.button("✨ Torna a la cara nova", key="torna_cara_nova"):
+        st.query_params.pop("antic", None)
+        st.rerun()
     # La descripcio va DINS de la columna del seu boto: aixi queda alineada
     # sempre. Abans anaven totes en una fila a part i es descolocaven en
     # arribar al final de linia. Files de tres; si a l'ultima en queda un, va al mig.

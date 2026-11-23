@@ -9,6 +9,18 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ".")
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
+# Aquests tests recorren la cara d'abans (la que fan servir els jocs encara no passats a la nova).
+_from_file = AppTest.from_file
+
+
+def _cara_antiga(*a, **k):
+    t = _from_file(*a, **k)
+    t.query_params["antic"] = "1"
+    return t
+
+
+AppTest.from_file = _cara_antiga
+
 
 def run(at):
     at.run()
@@ -53,3 +65,9 @@ assert "Donoso" not in open("app.py", encoding="utf-8").read()
 gifs = [f for f in os.listdir("static/festa") if f.endswith(".webp")]
 assert len(gifs) >= 40, len(gifs)
 print("AppTest tot OK:", len(BLOCS), "blocs + sense calendari ni noms + %d animacions" % len(gifs) + "")
+
+# Portada per defecte (sense ?antic=1): la cara nova, sense els botons de la d'abans.
+nova = run(_from_file("app.py", default_timeout=60))
+assert not [b for b in nova.button if (b.key or "").startswith("home_")], "sense ?antic surt la portada d'abans"
+assert nova.session_state.current_block == "Home"
+print("OK portada per defecte = cara nova")

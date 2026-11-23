@@ -32,7 +32,7 @@ with sync_playwright() as p:
         nav = getattr(p, eng).launch()
         pg = nav.new_context(viewport=vp, has_touch=(eng == "webkit")).new_page()
         pg.on("pageerror", lambda e: errs.append(str(e)))
-        pg.goto(URL); espera(pg, ".st-key-home_Concurs button"); time.sleep(1)
+        pg.goto(URL.rstrip("/") + "/?antic=1"); espera(pg, ".st-key-home_Concurs button"); time.sleep(1)
         boto = pg.locator(".st-key-home_Concurs button").first
         fons = boto.evaluate("b => getComputedStyle(b).backgroundImage")
         print(eng, "portada:", boto.inner_text(), "· daurat:", "247, 183, 49" in fons or "255, 209, 92" in fons)
