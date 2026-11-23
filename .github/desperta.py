@@ -16,6 +16,8 @@ with sync_playwright() as p:
         boto.first.click()
         time.sleep(90)
     pg.goto(APP + "/~/+/", timeout=90000)
-    pg.wait_for_selector(".st-key-home_Mates button", timeout=180000)
+    # portada per defecte = cara nova (component a pantalla completa); amb ?antic=1 seria .st-key-home_Mates
+    pg.wait_for_selector("iframe[title='app.aventura']", timeout=180000)
+    pg.frame_locator("iframe[title='app.aventura']").locator(".gominola").first.wait_for(timeout=60000)
     print("App desperta i portada carregada")
     nav.close()
