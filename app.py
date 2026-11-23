@@ -29,7 +29,7 @@ BLOCKS = [
     ("🔠", "PENJAT", "Penjat", "Endevina la paraula lletra a lletra"),
     ("🎨", "COLOREJA", "Colors", "Pinta més de 100 dibuixos amb la paleta"),
     ("👾", "MONSTRE GOLUT", "Golut", "Dona-li els plats que fan el seu número"),
-    ("🎯", "CONCURS", "Concurs", "Sol o en grup, amb una pantalla gran"),
+    ("🎯", "KAHOOT", "Concurs", "Sol o en grup, amb una pantalla gran"),   # nom triat pel Toni (23 nov 2026)
     ("🏆", "REPTE", "Repte", "10 exercicis i informe final"),
 ]
 SENSE_NIVELL = ("Lletres", "Colors")   # blocs sense Facil/Normal/Dificil
@@ -2838,7 +2838,7 @@ def concurs_solo():
             rec = f"<div class='cq-info'>El teu rècord en aquest tema: ⭐ {_cq_punts(g['record_abans'])}</div>"
         else:
             rec = "<div class='cq-info'>Aquest és el teu primer rècord en aquest tema!</div>"
-        st.markdown(f"<div class='cq-feedback si'>FI DEL CONCURS!<br>Has encertat {g['encerts']} de {n}<br>"
+        st.markdown(f"<div class='cq-feedback si'>FI DEL KAHOOT!<br>Has encertat {g['encerts']} de {n}<br>"
                     f"⭐ {_cq_punts(g['punts'])} punts</div>" + rec, unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         c1.button("🔁 TORNAR A JUGAR", key="cq_altre", use_container_width=True,
@@ -3025,7 +3025,7 @@ def cg_mestre():
     if fase == "final":
         resp = [r for j in jug.values() for r in j["respostes"].values()]
         pct = round(100 * sum(r["encert"] for r in resp) / len(resp)) if resp else 0
-        st.markdown("<div class='cg-titol'>🎉 FI DEL CONCURS! 🎉</div>" + cg_podi_html(sa)
+        st.markdown("<div class='cg-titol'>🎉 FI DEL KAHOOT! 🎉</div>" + cg_podi_html(sa)
                     + f"<div class='cg-resum'>Entre tots i totes heu encertat el <b>{pct}%</b> de les respostes. "
                     "Molt bona feina, equip! 💪</div>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
@@ -3515,11 +3515,11 @@ else:
                         unsafe_allow_html=True)
         elif ss.current_block == "Concurs":
             if ss.cq_mode == "sol":
-                st.markdown(f"<h3>🎯 CONCURS • {ss.diff.upper()}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3>🎯 KAHOOT • {ss.diff.upper()}</h3>", unsafe_allow_html=True)
             elif not cq_grup:
-                st.markdown("<h3>🎯 CONCURS</h3>", unsafe_allow_html=True)
+                st.markdown("<h3>🎯 KAHOOT</h3>", unsafe_allow_html=True)
             elif ss.cg_rol != "jugador" and not (ss.cg_pin and not ss.cg_edita):   # en joc, tot el lloc per al joc
-                st.markdown("<h3>🎯 CONCURS EN GRUP</h3>", unsafe_allow_html=True)
+                st.markdown("<h3>🎯 KAHOOT EN GRUP</h3>", unsafe_allow_html=True)
         elif ss.current_block == "Golut":
             nom_op = dict((o, l.split(" ", 1)[1]) for l, o in GOLUT_OPS)[ss.golut_op]
             st.markdown(f"<h3>MONSTRE GOLUT • {ss.diff.upper()} • {nom_op}</h3>", unsafe_allow_html=True)

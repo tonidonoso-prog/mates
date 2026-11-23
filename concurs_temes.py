@@ -285,7 +285,7 @@ def _monedes(diff):
 banc("formes", "🔺 FORMES", "mates", """
 🔺 | Quants costats té un triangle? | 3 | 4 | 5 | 2
 🟥 | Quants costats té un quadrat? | 4 | 3 | 5 | 6
-⬜ | Quina forma té tots quatre costats iguals? | Quadrat | Triangle | Cercle | Rectangle
+⬜ | Quina forma té quatre costats iguals i quatre cantonades rectes? | Quadrat | Triangle | Cercle | Rectangle
 ⚪ | Quina forma és rodona i no té cantonades? | Cercle | Quadrat | Triangle | Rectangle
 🔺 | Quina forma té tres costats? | Triangle | Quadrat | Cercle | Hexàgon
 | Quants costats té un rectangle? | 4 | 3 | 5 | 6
@@ -437,7 +437,7 @@ banc("sillabes", "👏 SÍL·LABES", "llengua", """
 banc("rimes", "🎵 RIMES", "llengua", """
 🐱 | Quina paraula rima amb GAT? | plat | gos | casa | lluna | flor
 🍎 | Quina paraula rima amb POMA? | goma | pera | sol | tren | gat
-⚽ | Quina paraula rima amb PILOTA? | gota | pilot | casa | nen | mar
+⚽ | Quina paraula rima amb PILOTA? | bota | pilot | casa | nen | mar
 🌸 | Quina paraula rima amb FLOR? | cor | fulla | gat | taula | peix
 📋 | Quina paraula rima amb TAULA? | paraula | cadira | llit | sol | pa
 🦶 | Quina paraula rima amb PEU? | neu | mà | cap | nas | gat
@@ -674,10 +674,10 @@ banc("cases", "🏡 ON VIUEN ELS ANIMALS?", "natura", """
 🐒 | On viuen molts micos? | a la selva | al Pol Nord | al desert | al mar
 🐟 | On viuen els peixos? | a l'aigua | a l'aire | als arbres | sota terra
 *🦁 | On viuen els lleons? | a la sabana | al Pol Nord | al mar | a la bassa
-*🐻‍❄️ | On viu l'ós polar? | al Pol Nord | al desert | a la selva | a la sabana
+*🐻‍❄️ | On viu l'os polar? | al Pol Nord | al desert | a la selva | a la sabana
 *🐿️ | On viuen els esquirols? | als arbres | al mar | al desert | a la bassa
 **🦇 | On dormen els ratpenats durant el dia? | penjats a les coves | dins el rusc | al fons del mar | al galliner
-**🐻 | On passa l'hivern l'ós bru? | dormint en una cova | a la platja | dins un rusc | al fons del mar
+**🐻 | On passa l'hivern l'os bru? | dormint en una cova | a la platja | dins un rusc | al fons del mar
 """)
 
 grups("menjars", "🥕 QUÈ MENGEN?", "natura", {
@@ -710,6 +710,7 @@ grups("grups", "🧬 MAMÍFERS, OCELLS, PEIXOS...", "natura", {
     "ocell": "Quin d'aquests animals és un ocell?",
     "peix": "Quin d'aquests animals és un peix?",
     "reptil": "Quin d'aquests animals és un rèptil?",
+    "amfibi": "Quin d'aquests animals és un amfibi?",
     "insecte": "Quin d'aquests animals és un insecte?",
 }, {
     "mamifer": "🐳 balena, 🐬 dofí, 🦇 ratpenat, 🐶 gos, 🐄 vaca, 🐘 elefant, 🦁 lleó, 🐰 conill",
@@ -960,8 +961,8 @@ banc("monuments", "🗽 MONUMENTS DEL MÓN", "mon", """
 
 banc("animals_mon", "🦘 ANIMALS DEL MÓN", "mon", """
 🦘 | On viuen els cangurs en llibertat? | a Austràlia | a Catalunya | al Pol Nord | al Japó
-🐼 | De quin país és l'ós panda? | de la Xina | d'Austràlia | del Brasil | d'Egipte
-🐻‍❄️ | On viu l'ós polar? | a l'Àrtic | al desert | a la selva | a Austràlia
+🐼 | De quin país és l'os panda? | de la Xina | d'Austràlia | del Brasil | d'Egipte
+🐻‍❄️ | On viu l'os polar? | a l'Àrtic | al desert | a la selva | a Austràlia
 🦁 | En quin continent viuen els lleons en llibertat? | Àfrica | Europa | Oceania | l'Antàrtida
 🦒 | En quin continent viuen les girafes? | Àfrica | Europa | Amèrica | Oceania
 🐧 | On viu el pingüí emperador? | a l'Antàrtida | al Sàhara | a la selva | al Pol Nord

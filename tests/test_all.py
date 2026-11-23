@@ -25,7 +25,8 @@ for blk in BLOCS:
     assert f"home_{blk}" in keys, (blk, keys)
 assert "home_cal" in keys and "home_rank" not in keys
 labels = " ".join(b.label for b in at.button).upper()
-for prohibit in ("INNOVAMAT", "CLASSIFICACI", "SUSHI", "KAHOOT"):
+# KAHOOT ja no hi es: el 23 nov 2026 el Toni va decidir dir-li Kahoot (app nomes per a la gent de l'escola)
+for prohibit in ("INNOVAMAT", "CLASSIFICACI", "SUSHI"):
     assert prohibit not in labels, prohibit
 for blk in BLOCS:
     at.button(key=f"home_{blk}").click()

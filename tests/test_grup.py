@@ -233,7 +233,7 @@ assert boto(mestre, "cg_m_seg")[0].label.startswith("🏆")
 mestre.button(key="cg_m_seg").click(); run(mestre)
 h = html(mestre)
 podi = h[h.find("class='cg-podi'"):h.find("class='cg-resum'")]
-assert "FI DEL CONCURS" in h and podi.count("<div class='cg-esgrao p") == 3, podi
+assert "FI DEL KAHOOT" in h and podi.count("<div class='cg-esgrao p") == 3, podi
 festa = h[h.find("class='cg-podi-cap'"):h.find("class='cg-podi'")]
 srcs = re.findall(r"src='([^']+)'", festa)
 assert srcs and all(x.startswith("app/static/festa/") for x in srcs), srcs     # mai URLs de tercers
