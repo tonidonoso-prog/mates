@@ -21,12 +21,12 @@
   --lletra: "Andika", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; min-height: 100%; }
 body {
   font-family: var(--lletra);
   color: var(--tinta);
   background: var(--cel-clar);
-  overflow-x: hidden;
+  overflow-x: clip;          /* clip, no hidden: hidden converteix el body en caixa de scroll i dins l'iframe no baixa */
   -webkit-tap-highlight-color: transparent;
 }
 /* el cel va en una capa fixa: background-attachment: fixed falla a Safari i dins d'iframes */

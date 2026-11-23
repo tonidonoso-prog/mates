@@ -372,9 +372,11 @@
     let a, b;
     if (nivell === "Fàcil") { b = rnd(11, 29); a = op === "suma" ? rnd(11, 60) : rnd(b + 5, 90); }
     else if (nivell === "Normal") { b = rnd(21, 39); a = op === "suma" ? rnd(15, 59) : rnd(b + 10, 99); }
-    else { b = rnd(23, 89); a = op === "suma" ? rnd(101, 499) : rnd(b + 40, 599); }
+    else { b = rnd(21, 49); a = op === "suma" ? rnd(101, 499) : rnd(b + 40, 599); }
     if (b % 10 === 0) b += rnd(1, 9);
-    const salts = nivell === "Difícil" ? [Math.floor(b / 10) * 10] : Array(Math.floor(b / 10)).fill(10);
+    // Com a classe (Innovamat, linia numerica buida): primer les desenes, de 10 en 10 i una a una,
+    // i al final les unitats. 210 + 43 -> 220, 230, 240, 250, 253.
+    const salts = Array(Math.floor(b / 10)).fill(10);
     salts.push(b % 10);
     const punts = [a];
     salts.forEach((sx) => punts.push(punts[punts.length - 1] + (op === "suma" ? sx : -sx)));
@@ -400,11 +402,12 @@
 
   function rectaSvg() {
     const p = RT.p, n = p.salts.length, W = 360, H = 170, Y = 92, M = 34;
-    const amples = p.salts.map((sx) => sx >= 10 ? 1 + Math.min(sx, 50) / 100 : .62);
+    const amples = p.salts.map((sx) => sx >= 10 ? 1 : .85);   // no cal que siguin proporcionals; així les caselles no es trepitgen
     const total = amples.reduce((x, y) => x + y, 0);
     const xs = [0];
     amples.forEach((w) => xs.push(xs[xs.length - 1] + (W - 2 * M) * w / total));
     const X = (i) => p.op === "suma" ? M + xs[i] : W - M - xs[i];
+    const CW = Math.min(54, Math.min(...xs.slice(1).map((x, i) => x - xs[i])) - 4);   // amplada de casella
     let svg = `<svg class="recta-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Recta numèrica">`;
     svg += `<line x1="8" y1="${Y}" x2="${W - 8}" y2="${Y}" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`;
     svg += p.op === "suma" ? `<path d="M${W - 18} ${Y - 8} L${W - 6} ${Y} L${W - 18} ${Y + 8}" fill="none" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`
@@ -421,10 +424,19 @@
       const val = i === RT.actiu ? (RT.escrit || "?") : (RT.fets[i] || "");
       const cls = est === "donat" ? "donat" : est === "be" ? "be" : est === "ajuda" ? "ajuda" : actiu ? "actiu" : "buida";
       svg += `<line x1="${x}" y1="${Y - 9}" x2="${x}" y2="${Y + 9}" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`;
-      svg += `<g class="caixa ${cls}"><rect x="${x - 27}" y="${Y + 18}" width="54" height="40" rx="12"/>
+      svg += `<g class="caixa ${cls}"><rect x="${x - CW / 2}" y="${Y + 18}" width="${CW}" height="40" rx="12"/>
               <text x="${x}" y="${Y + 46}" text-anchor="middle">${esc(val)}</text></g>`;
     }
     return svg + "</svg>";
+  }
+
+  function consignaRecta() {
+    const p = RT.p, i = RT.actiu, n = p.salts.length;
+    if (i > n) return "Fet!";
+    const salt = (p.op === "suma" ? "+" : "−") + p.salts[i - 1];
+    const v = +RT.fets[i - 1], des = (v === 1 || v === 11) ? `des de l'${v}` : `des del ${v}`;   // l'u i l'onze s'apostrofen
+    return i < n ? `Salt ${i} de ${n}: ${des}, fes ${salt}. On arribes?`
+                 : `Últim salt: ${des}, fes ${salt}. Aquesta casella és el resultat!`;
   }
 
   function pintaRecta() {
@@ -443,7 +455,7 @@
         <button class="op-tria" aria-pressed="${RT.op === "resta"}" data-fa="recta_op" data-arg="resta">⬅️ Restes ➖</button></div>
       <section class="exercici">
         <div class="pregunta mates-pregunta recta">
-          <p class="consigna">${p.op === "suma" ? "Fes els salts cap a la dreta" : "Fes els salts cap a l'esquerra"} i escriu on arribes a cada salt.</p>
+          <p class="consigna">${consignaRecta()}</p>
           <p class="operacio llarga">${p.a} ${signe} ${p.b} = <span class="escrit${ultim ? " solucio" : " buit"}">${ultim ? RT.fets[p.punts.length - 1] : "?"}</span></p>
           ${rectaSvg()}
         </div>
