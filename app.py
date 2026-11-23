@@ -2738,16 +2738,23 @@ def _cq_punts(n):
     return f"{n:,}".replace(",", ".")
 
 
-def _cq_comenca(tema):
+def cq_tria(tema, diff):
+    """10 preguntes que aquest dispositiu encara no ha vist en aquest tema i nivell."""
     ss = st.session_state
     # vistes d'aquest dispositiu (o d'aquesta sessio, si encara no sabem quin dispositiu es)
     mem = _cq_memoria() if ss.jugador else ss.setdefault("cq_vistes_sessio", {})
-    vistes = mem.setdefault((ss.jugador, tema, ss.diff), {})
-    preguntes = concurs_preguntes(tema, ss.diff, CONCURS_N, vistes)
+    vistes = mem.setdefault((ss.jugador, tema, diff), {})
+    preguntes = concurs_preguntes(tema, diff, CONCURS_N, vistes)
     claus = [cq_clau(q) for q in preguntes]
     if any(c in vistes for c in claus):
         vistes.clear()                 # ja les ha vistes totes: es torna a comencar
     vistes.update(dict.fromkeys(claus))
+    return preguntes
+
+
+def _cq_comenca(tema):
+    ss = st.session_state
+    preguntes = cq_tria(tema, ss.diff)
     ss.cq = {"tema": tema, "nivell": ss.diff, "segons": CONCURS_SEGONS[ss.diff],
              "preguntes": preguntes, "idx": 0,
              "t0": time.time(), "resposta": None, "punts": 0, "encerts": 0, "fase": "pregunta"}
@@ -3269,6 +3276,74 @@ with st.container(key="amagat_dispositiu"):
     st.text_input("dispositiu", key="dispositiu", on_change=on_dispositiu, label_visibility="collapsed")
     components.html(dispositiu_html(), height=0)
 cg_entra_per_url()          # si s'ha obert amb el QR d'una sala (?sala=<PIN>), hi entra sola
+# ======================================================== CARA NOVA (prova, 23 nov 2026)
+# HTML + JS propi a pantalla completa (web/juego), dins la mateixa adreca. De moment nomes amb
+# ?nou=1: portada i Kahoot en solitari; els altres jocs obren la versio de sempre.
+_AVENTURA = components.declare_component("aventura", path=str(BASE_DIR / "web" / "juego"))
+IMG_BLOC = {"Mates": "mates", "Calcul": "calcul", "Lectura": "lectura", "Lletres": "lletres", "Sopa": "sopa",
+            "Memory": "memory", "Penjat": "penjat", "Colors": "colors", "Golut": "golut", "Concurs": "concurs",
+            "Repte": "repte"}
+
+
+def nova_cara():
+    ss = st.session_state
+    st.markdown(
+        "<style>header,[data-testid='stSidebar'],[data-testid='stToolbar'],[data-testid='stDecoration'],footer"
+        "{display:none!important}.block-container{padding:0!important;max-width:none!important}"
+        ".st-key-aventura iframe{position:fixed;inset:0;width:100vw!important;height:100dvh!important;"
+        "z-index:999;border:0}</style>", unsafe_allow_html=True)
+    args = dict(
+        blocs=[{"id": b, "nom": nom, "desc": desc, "img": IMG_BLOC[b],
+                "nou": b in NOU_FINS and avui() <= NOU_FINS[b]} for _, nom, b, desc in BLOCKS],
+        categories=[{"id": c, "nom": nom.split(" ", 1)[1], "img": f"cat_{c}",
+                     "temes": [{"id": t, "nom": l} for t, l in CT.temes_de(c)]} for c, nom in CT.CATEGORIES],
+        nivell=ss.diff, nivells=[d for d, _ in DIFFS], medalles=len(ss.dies), records=ss.cq_records,
+        n_preguntes=CONCURS_N, partida=ss.get("nou_partida"),
+        avisos={"n": ss.get("nou_avisos_n", 0), "llista": ss.get("nou_avisos", [])})
+    val = _AVENTURA(key="aventura", default=None, **args)
+    if not isinstance(val, dict) or val.get("n") == ss.get("nou_ultim"):
+        return
+    ss.nou_ultim = val["n"]
+    accio = val.get("accio")
+    if accio == "bloc" and val.get("bloc") in NOM_BLOC:
+        start_block(val["bloc"])
+    elif accio == "bloc" and val.get("bloc") == "Calendari":
+        ss.update(current_block="Calendari", cal_mes=None)
+    elif accio == "nivell" and val.get("nivell") in [d for d, _ in DIFFS]:
+        ss.diff = val["nivell"]
+    elif accio == "comenca":
+        tema = val.get("tema", "barreja")
+        if tema not in {t for _, t in CONCURS_TEMES}:
+            tema = "barreja"
+        nivell = val.get("nivell") if val.get("nivell") in CONCURS_SEGONS else ss.diff
+        ss.nou_partida = {"id": val.get("id"), "tema": tema, "nivell": nivell, "segons": CONCURS_SEGONS[nivell],
+                          "preguntes": cq_tria(tema, nivell)}
+    elif accio == "final":
+        # es compta tot alhora i es desa una sola vegada (el servidor castiga les rafegues)
+        for r in val.get("respostes", [])[:CONCURS_N]:
+            if r:
+                ss.punts += 1; ss.encerts += 1; ss.ratxa += 1
+                ss.millor_ratxa = max(ss.millor_ratxa, ss.ratxa)
+            else:
+                ss.errors += 1; ss.ratxa = 0
+        if val.get("respostes"):
+            marca_avui()
+            sync_progres()
+        clau = f"{val.get('tema')}|{val.get('nivell')}"
+        ss.cq_records[clau] = max(ss.cq_records.get(clau, 0), int(val.get("punts") or 0))
+        ss.nou_partida = None
+        if ss.avisos:              # les medalles les ensenya la cara nova, a pantalla completa
+            ss.nou_avisos, ss.avisos = list(ss.avisos), []
+            ss.nou_avisos_n = ss.get("nou_avisos_n", 0) + 1
+    elif accio == "antic":
+        st.query_params.pop("nou", None)
+    st.rerun()
+
+
+if st.query_params.get("nou") == "1" and st.session_state.current_block == "Home":
+    nova_cara()
+    st.stop()
+
 render_header()
 
 if st.session_state.current_block == "Home":

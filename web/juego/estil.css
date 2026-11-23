@@ -1,0 +1,180 @@
+/* Aventura Matemàtica · nova cara (23 nov 2026)
+   Idea: un món de joguina amb llum de pel·lícula d'animació. Cel de matí, gominoles toves
+   i dibuixos 3D que surten del bloc. El moment memorable: cada toc fa l'aixafar-i-estirar
+   dels dibuixos animats (squash & stretch). La resta, tranquil. */
+:root {
+  --cel: #7FD3F7;
+  --cel-clar: #C9F1FF;
+  --presseg: #FFE2C4;
+  --tinta: #3B2A5C;
+  --tinta-suau: #6B5A8C;
+  --tomata: #FF6B5B;
+  --gira-sol: #FFC53D;
+  --menta: #2DD4A7;
+  --raim: #8B6CFF;
+  --xiclet: #FF7AB6;
+  --mar: #3AA0FF;
+  --blanc: #FFFFFF;
+  --gruix: inset 0 -9px 0 rgba(40, 20, 70, .22), inset 0 7px 0 rgba(255, 255, 255, .38);
+  --ombra: 0 14px 22px -10px rgba(59, 42, 92, .45);
+  --titol: "Lilita One", "Andika", system-ui, sans-serif;
+  --lletra: "Andika", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--lletra);
+  color: var(--tinta);
+  background: var(--cel-clar);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+/* el cel va en una capa fixa: background-attachment: fixed falla a Safari i dins d'iframes */
+.cel { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: linear-gradient(180deg, var(--cel) 0%, var(--cel-clar) 48%, var(--presseg) 100%); }
+.nuvol { position: absolute; background: rgba(255, 255, 255, .85); border-radius: 999px; filter: blur(.4px); }
+.nuvol::before, .nuvol::after { content: ""; position: absolute; background: inherit; border-radius: 50%; }
+.n1 { width: 150px; height: 46px; top: 7%; left: -30px; }
+.n1::before { width: 70px; height: 70px; top: -36px; left: 26px; } .n1::after { width: 52px; height: 52px; top: -22px; left: 78px; }
+.n2 { width: 120px; height: 38px; top: 18%; right: -20px; opacity: .8; }
+.n2::before { width: 56px; height: 56px; top: -30px; left: 20px; } .n2::after { width: 42px; height: 42px; top: -18px; left: 62px; }
+.n3 { width: 90px; height: 30px; top: 55%; left: 62%; opacity: .55; }
+.n3::before { width: 44px; height: 44px; top: -24px; left: 14px; } .n3::after { width: 32px; height: 32px; top: -14px; left: 46px; }
+
+main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 16px 40px; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+button:focus-visible { outline: 4px solid var(--tinta); outline-offset: 4px; }
+img { user-select: none; -webkit-user-drag: none; }
+
+/* ---------- capçalera amb la mascota ---------- */
+.cap { display: grid; grid-template-columns: auto 1fr auto; align-items: end; gap: 10px; min-height: 150px; }
+.mascota { width: 132px; height: auto; filter: drop-shadow(0 12px 10px rgba(59, 42, 92, .28)); transform-origin: 50% 100%; }
+.mascota.arriba { animation: arriba 900ms cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes arriba {
+  0% { transform: translateY(70px) scale(.6, .4); opacity: 0; }
+  45% { transform: translateY(-14px) scale(.9, 1.12); opacity: 1; }
+  70% { transform: translateY(0) scale(1.1, .9); }
+  100% { transform: none; }
+}
+.bafarada { align-self: center; justify-self: start; position: relative; background: var(--blanc); border-radius: 26px; padding: 12px 18px;
+  font-size: 1.15rem; line-height: 1.3; box-shadow: var(--ombra); max-width: 26ch; }
+.bafarada::before { content: ""; position: absolute; left: -10px; bottom: 16px; border: 10px solid transparent; border-right-color: var(--blanc); border-left: 0; }
+.bafarada b { font-family: var(--titol); font-weight: 400; font-size: 1.5rem; display: block; color: var(--tinta); }
+.medalles { align-self: start; display: flex; align-items: center; gap: 4px; background: var(--blanc); border-radius: 999px;
+  padding: 4px 14px 4px 6px; box-shadow: var(--ombra); font-family: var(--titol); font-size: 1.35rem; }
+.medalles img { width: 36px; height: 36px; }
+
+/* ---------- nivell ---------- */
+.nivells { display: flex; gap: 8px; background: rgba(255, 255, 255, .55); padding: 6px; border-radius: 999px; width: max-content; max-width: 100%; margin: 6px 0 26px; }
+.nivells button { font-family: var(--titol); font-size: 1.05rem; padding: 9px 16px; border-radius: 999px; color: var(--tinta-suau); }
+.nivells button[aria-pressed="true"] { background: var(--menta); color: var(--blanc); box-shadow: var(--gruix), 0 6px 10px -6px rgba(0, 0, 0, .4); }
+
+/* ---------- gominoles (els jocs) ---------- */
+.graella { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 14px; padding-top: 30px; }
+@media (min-width: 620px) { .graella { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .graella { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.gominola { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 50px 10px 16px; border-radius: 30px; background: var(--c, var(--tomata)); color: var(--blanc);
+  box-shadow: var(--gruix), var(--ombra); transform-origin: 50% 100%; min-height: 150px; }
+.gominola img { position: absolute; top: -40px; width: 88px; height: 88px; filter: drop-shadow(0 8px 6px rgba(40, 20, 70, .35)); }
+.gominola .nom { font-family: var(--titol); font-size: 1.3rem; line-height: 1.05; letter-spacing: .01em; text-shadow: 0 2px 0 rgba(40, 20, 70, .25); }
+.gominola .desc { font-size: .92rem; line-height: 1.25; margin-top: 6px; opacity: .95; }
+.gominola.nou::after { content: "NOU!"; position: absolute; top: 8px; right: -6px; transform: rotate(12deg); background: var(--gira-sol);
+  color: var(--tinta); font-family: var(--titol); font-size: .95rem; padding: 4px 10px; border-radius: 10px; box-shadow: 0 4px 0 #C8900E; }
+.llarga { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: 12px; min-height: 0; padding: 14px; }
+.llarga img { position: static; width: 52px; height: 52px; }
+
+/* aixafar i estirar: el toc respon com un personatge */
+.boing { animation: boing 420ms cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes boing {
+  0% { transform: scale(1.1, .86); }
+  35% { transform: scale(.93, 1.1); }
+  65% { transform: scale(1.04, .97); }
+  100% { transform: scale(1, 1); }
+}
+.premut { transform: scale(1.08, .9) translateY(3px); transition: transform 80ms; }
+
+/* ---------- títols de pantalla ---------- */
+.barra { display: flex; align-items: center; gap: 10px; margin: 4px 0 18px; }
+.tornar { width: 54px; height: 54px; border-radius: 50%; background: var(--blanc); box-shadow: var(--ombra); font-family: var(--titol); font-size: 1.6rem; color: var(--tinta); }
+.barra h1 { font-family: var(--titol); font-weight: 400; font-size: clamp(1.6rem, 6vw, 2.4rem); margin: 0; line-height: 1; text-shadow: 0 3px 0 rgba(255, 255, 255, .7); }
+.barra .mini { width: 52px; height: 52px; }
+.ajuda { font-size: 1.1rem; margin: -6px 0 18px; color: var(--tinta-suau); }
+
+/* categories i temes */
+.categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px 14px; padding-top: 30px; }
+@media (min-width: 620px) { .categories { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.categories .gominola { min-height: 118px; padding-top: 46px; }
+.categories .gominola img { width: 76px; height: 76px; top: -34px; }
+.categories .gominola .nom { font-size: 1.15rem; }
+.temes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.tema { background: var(--blanc); border-radius: 22px; padding: 14px 12px; font-family: var(--titol); font-size: 1.05rem; line-height: 1.15;
+  box-shadow: inset 0 -6px 0 rgba(59, 42, 92, .14), var(--ombra); text-align: left; min-height: 64px; color: var(--tinta); }
+.tema .rec { display: block; font-family: var(--lletra); font-size: .85rem; color: var(--tinta-suau); margin-top: 4px; }
+.tema.barreja { background: var(--gira-sol); }
+
+/* ---------- partida ---------- */
+.partida { display: grid; gap: 14px; }
+.marcador { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-family: var(--titol); font-size: 1.15rem; }
+.marcador .punts { justify-self: end; background: var(--blanc); border-radius: 999px; padding: 6px 14px; box-shadow: var(--ombra); }
+.rellotge { position: relative; width: 78px; height: 78px; }
+.rellotge svg { transform: rotate(-90deg); }
+.rellotge .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--titol); font-size: 2rem; }
+.rellotge.poc .num { color: var(--tomata); }
+.pregunta { background: var(--blanc); border-radius: 32px; padding: 18px 18px 16px; box-shadow: var(--ombra); text-align: center; }
+.dibuix { font-size: clamp(3.2rem, 15vw, 5.5rem); line-height: 1.1; margin-bottom: 6px; }
+.dibuix.llarg { font-size: clamp(1.7rem, 7.5vw, 2.8rem); }
+.bandera { font-family: "Noto Color Emoji", sans-serif; }
+.enunciat { font-family: var(--lletra); font-weight: 700; font-size: clamp(1.35rem, 5.2vw, 2rem); line-height: 1.25; margin: 0 auto; max-width: 30ch; }
+.escolta { margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; background: var(--tinta); color: var(--blanc);
+  border-radius: 999px; padding: 8px 18px 8px 10px; font-family: var(--titol); font-size: 1.1rem; }
+.escolta img { width: 34px; height: 34px; }
+.respostes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.resposta { position: relative; min-height: 92px; padding: 14px 12px 18px; border-radius: 26px; background: var(--c); color: var(--blanc);
+  font-family: var(--titol); font-size: clamp(1.15rem, 4.8vw, 1.7rem); line-height: 1.1; box-shadow: var(--gruix), var(--ombra);
+  display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 2px 0 rgba(40, 20, 70, .25); }
+.resposta .forma { font-size: .9em; opacity: .9; }
+.resposta.apagada { filter: saturate(.25) brightness(1.05); opacity: .55; }
+.resposta.bona { outline: 6px solid var(--blanc); animation: bona 700ms cubic-bezier(.3, 1.6, .5, 1); }
+.resposta.malament { animation: no 420ms; }
+@keyframes bona { 0% { transform: scale(.9); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes no { 20%, 60% { transform: translateX(-8px) rotate(-2deg); } 40%, 80% { transform: translateX(8px) rotate(2deg); } }
+.avis { text-align: center; font-family: var(--titol); font-size: clamp(1.6rem, 6vw, 2.3rem); min-height: 1.3em; }
+.avis.si { color: #138A6A; } .avis.no { color: var(--tomata); }
+.sortir { justify-self: center; font-family: var(--titol); color: var(--tinta-suau); font-size: 1.05rem; padding: 8px 14px; }
+
+/* ---------- final ---------- */
+.final { text-align: center; display: grid; gap: 12px; justify-items: center; padding-top: 10px; }
+.final .mascota { width: 170px; }
+.final h1 { font-family: var(--titol); font-weight: 400; font-size: clamp(2rem, 8vw, 3rem); margin: 0; }
+.final .xifra { font-family: var(--titol); font-size: clamp(3rem, 14vw, 5rem); line-height: 1; }
+.final .rec { font-size: 1.2rem; }
+.final .rec.nou { font-family: var(--titol); color: #B26B00; font-size: 1.6rem; }
+.botons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.boto { font-family: var(--titol); font-size: 1.25rem; padding: 14px 22px; border-radius: 22px; background: var(--c, var(--menta)); color: var(--blanc);
+  box-shadow: var(--gruix), var(--ombra); }
+
+/* ---------- capa de celebració (medalles) ---------- */
+#capa[hidden] { display: none; }
+#capa { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(255, 226, 196, .9); backdrop-filter: blur(6px); text-align: center; padding: 20px; }
+#capa img { width: min(48vw, 220px); animation: arriba 900ms cubic-bezier(.2, .9, .3, 1.3) both; }
+#capa h2 { font-family: var(--titol); font-weight: 400; font-size: clamp(2rem, 8vw, 3.2rem); margin: 10px 0 0; }
+#capa p { font-size: 1.3rem; margin: 6px 0 0; }
+.confeti { position: fixed; top: -10px; width: 10px; height: 16px; border-radius: 3px; z-index: 11; animation: cau 1400ms ease-in forwards; }
+@keyframes cau { to { transform: translateY(105vh) rotate(540deg); opacity: .3; } }
+
+.carregant { text-align: center; font-family: var(--titol); font-size: 1.6rem; padding: 60px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .confeti { display: none; }
+}
+@media (max-width: 420px) {
+  .cap { grid-template-columns: auto 1fr; min-height: 0; }
+  .medalles { grid-column: 2; grid-row: 1; justify-self: end; }
+  .mascota { width: 104px; grid-row: 1 / span 2; }
+  .bafarada { grid-column: 2; font-size: 1rem; }
+  .bafarada b { font-size: 1.25rem; }
+  .gominola .nom { font-size: 1.12rem; }
+  .gominola .desc { font-size: .82rem; }
+}
