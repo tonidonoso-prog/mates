@@ -61,6 +61,7 @@
     mostraAvisos();
   });
   envia("streamlit:componentReady");
+  function adalt() { const r = document.getElementById("rodet"); if (r) r.scrollTop = 0; }
   function alcada() { envia("streamlit:setFrameHeight", { height: Math.max(window.innerHeight, 600) }); }
   window.addEventListener("resize", alcada);
 
@@ -159,7 +160,7 @@
     else if (vista === "temes") pintaTemes();
     else if (vista === "carregant") $app.innerHTML = "<p class='carregant'>Preparant les preguntes…</p>";
     else if (vista === "final") pintaFinal();
-    window.scrollTo(0, 0);
+    adalt();
     alcada();
   }
 
@@ -359,7 +360,7 @@
           <button class="boto" style="--c:#2F8FEA" data-fa="inici">Inici</button>
         </div>
       </section>`;
-    window.scrollTo(0, 0);
+    adalt();
   }
 
   // ---------------------------------------------------------------- RECTA NUMÈRICA
@@ -541,7 +542,7 @@
           `<button class="resposta" style="--c:${RESP[i][1]}" data-fa="resposta" data-arg="${i}"><span class="forma" aria-hidden="true">${RESP[i][0]}</span>${esc(o)}</button>`).join("")}</div>
         <div class="sortida"><button class="boto-sortir" data-fa="sortir">🚪 Sortir de la partida</button></div>
       </section>`;
-    window.scrollTo(0, 0);
+    adalt();
     atura();
     rellotge = setInterval(() => {
       const passat = (performance.now() - P.t0) / 1000, queda = Math.max(0, P.segons - passat);

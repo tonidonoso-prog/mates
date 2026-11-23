@@ -79,7 +79,7 @@ with sync_playwright() as p:
         pg.set_viewport_size({"width": vp[0], "height": 600}); time.sleep(1)
         fr = pg.locator("iframe[title='app.aventura']").element_handle().content_frame()
         pg.mouse.move(vp[0] / 2, 300); pg.mouse.wheel(0, 800); time.sleep(1)
-        baixat = fr.evaluate("() => scrollY")
+        baixat = fr.evaluate("() => document.getElementById('rodet').scrollTop")
         print(tag, "scroll:", baixat)
         assert baixat > 100, baixat
         print(tag, "errors JS:", errs)

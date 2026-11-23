@@ -11,7 +11,8 @@
 </head>
 <body>
   <div class="cel" aria-hidden="true"><span class="nuvol n1"></span><span class="nuvol n2"></span><span class="nuvol n3"></span></div>
-  <main id="app" aria-live="polite"></main>
+  <!-- Streamlit posa scrolling="no" a l'iframe: amb el dit no baixa. El scroll el fa aquesta capa. -->
+  <div id="rodet"><main id="app" aria-live="polite"></main></div>
   <div id="capa" hidden></div>
   <script src="joc.js"></script>
 </body>
