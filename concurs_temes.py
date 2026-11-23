@@ -1355,6 +1355,43 @@ banc("endevinalles", "❓ ENDEVINALLES", "logica", """
 | Sempre puja i mai baixa. Què és? | l'edat | l'ascensor | el globus | l'avió
 *| Com més s'asseca, més mullada està. Què és? | la tovallola | la roba | la pluja | el paraigua
 *| És teu però els altres el fan servir més que tu. Què és? | el teu nom | el teu llapis | la teva bici | la teva casa
+| Soc verda, salto molt i faig «rauc, rauc». Qui soc? | la granota | el gat | l'ocell | la serp
+| Tinc ratlles blanques i negres i semblo un cavall. Qui soc? | la zebra | el tigre | el gos | la vaca
+| Tinc una trompa molt llarga i les orelles molt grans. Qui soc? | l'elefant | la girafa | el ratolí | el lleó
+| Porto la casa a l'esquena i vaig molt a poc a poc. Qui soc? | el cargol | el conill | el cavall | el gat
+| Tinc el coll molt i molt llarg i menjo fulles dels arbres. Qui soc? | la girafa | l'elefant | el porc | la gallina
+| Faig mel i pico si em molesten. Qui soc? | l'abella | la mosca | la formiga | la papallona
+| Tinc vuit potes i faig teranyines. Qui soc? | l'aranya | la formiga | l'abella | el cargol
+| De dia dormo penjat cap per avall i de nit volo. Qui soc? | el ratpenat | la gallina | el gat | el peix
+| Quan plou m'obres i quan fa sol em tanques. Què soc? | el paraigua | la nevera | la sabata | el got
+| Tinc dues rodes i pedals. Què soc? | la bicicleta | el cotxe | el patinet | l'autobús
+| Escric però no sé llegir. Què soc? | el llapis | la goma | les tisores | el plat
+| De dia escalfo i de nit no hi soc. Què soc? | el sol | la lluna | la neu | el núvol
+| Surto de nit; a vegades soc rodona i a vegades em veus a mitges. Què soc? | la lluna | el sol | l'arc de Sant Martí | el núvol
+| Soc blanca, caic del cel quan fa fred i amb mi fas ninots. Què soc? | la neu | la pluja | el sol | la sorra
+| Tinc un barret i un sol peu, i visc al bosc. Què soc? | el bolet | el pi | la pedra | el ratolí
+| Tinc llum vermella, taronja i verda, i estic al carrer. Què soc? | el semàfor | el fanal | l'arc de Sant Martí | la bombeta
+| Petita com un ratolí, guardo la casa com un lleó. Què soc? | la clau | la porta | la finestra | la taula
+| Sempre estic dins de casa però sempre miro al carrer. Què soc? | la finestra | el llit | la nevera | la banyera
+| Quan fa sol et segueixo a tot arreu, i de nit desapareixo. Què soc? | l'ombra | el núvol | la lluna | la pluja
+| Volo sense ales i ploro sense ulls. Què soc? | el núvol | l'ocell | l'avió | l'abella
+| Tinc cua però no soc un animal, i volo lligat a un fil. Què soc? | l'estel | l'ocell | la pilota | el paraigua
+| Tinc ble, faig llum i em fonc a poc a poc. Què soc? | l'espelma | la bombeta | la llanterna | el mirall
+| Soc prima, tinc un sol ull i ajudo a cosir. Què soc? | l'agulla | les tisores | el fil | el botó
+| Una caixeta blanca: tothom la sap obrir i ningú la sap tancar. Què és? | l'ou | la capsa de sabates | el llibre | la porta
+| Entre dues parets blanques hi ha una flor groga. Què és? | l'ou | la casa | la poma | el plàtan
+*| Tinc corona però no soc rei, tinc escates però no soc peix. Què soc? | la pinya tropical | el drac | el cocodril | la sargantana
+*| Té ulls i no hi veu, té aigua i no la beu, té carn i no la menja. Què és? | el coco | el meló | la síndria | la poma
+*| Pujo i baixo però no em moc de lloc. Què soc? | l'escala | l'ascensor | el globus | l'avió
+*| Tinc coll i mànigues però no tinc cap ni braços. Què soc? | la camisa | la girafa | els pantalons | la sabata
+*| Tinc llit però mai no dormo, i corro sense cames. Què soc? | el riu | el gat | la cadira | el llibre
+*| Com més gran em faig, menys es veu. Què soc? | la foscor | la llum | el sol | el globus
+*| M'has de trencar abans de fer-me servir. Què soc? | l'ou | el got | el llapis | la pilota
+*| Si el comparteixes, ja no el tens. Què és? | un secret | un pastís | un llibre | una joguina
+*| Tinc ulls de gat, orelles de gat i cua de gat, però no soc un gat. Què soc? | la gata | el gos | el conill | el ratolí
+**| Què pesa més: un quilo de palla o un quilo de ferro? | pesen igual | el ferro | la palla | depèn del dia
+**| Quants mesos de l'any tenen com a mínim 28 dies? | tots | 2 | 6 | 10
+**| Tinc dents però no menjo, i tallo la fusta. Què soc? | la serra | el martell | les tisores | el clau
 """)
 
 _INTRUS = {
