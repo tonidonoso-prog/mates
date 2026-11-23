@@ -1048,7 +1048,7 @@ banc("egipte", "🐫 L'ANTIC EGIPTE", "historia", """
 🔺 | On són les piràmides més famoses? | a Egipte | a França | a Catalunya | al Japó
 👑 | Com es deien els reis de l'antic Egipte? | faraons | emperadors | cavallers | presidents
 🌊 | Quin riu travessa Egipte? | el Nil | l'Ebre | el Sena | el Tàmesi
-🧻 | Com es diu un cos embolicat amb benes per conservar-lo? | mòmia | fòssil | estàtua | esquelet
+| Com es diu un cos embolicat amb benes per conservar-lo? | mòmia | fòssil | estàtua | esquelet
 | Com es diu l'escriptura egípcia feta amb dibuixos? | jeroglífics | números romans | lletres llatines | emojis
 🦁 | Quin monument té cos de lleó i cap de persona? | l'esfinx | la Torre Eiffel | el Coliseu | la Sagrada Família
 🔺 | Per a què servien les piràmides? | eren les tombes dels faraons | eren escoles | eren mercats | eren estacions de tren
@@ -1089,11 +1089,11 @@ banc("edatmitjana", "🏰 CASTELLS I CAVALLERS", "historia", """
 
 banc("invents", "💡 INVENTS", "historia", """
 | Quin invent molt antic serveix per moure els carros? | la roda | el telèfon | l'ordinador | la bombeta
-📞 | Quin invent ens permet parlar amb algú que és lluny? | el telèfon | la roda | el rellotge | la cullera
-💡 | Quin invent ens dona llum a casa amb electricitat? | la bombeta | l'espelma | el foc | el mirall
-🔬 | Amb quin aparell veiem coses molt i molt petites? | el microscopi | el telescopi | la ràdio | la tele
-✈️ | Quin invent ens permet volar? | l'avió | el submarí | el tren | la bicicleta
-🧭 | Quin aparell indica sempre el nord? | la brúixola | el rellotge | el termòmetre | la calculadora
+| Quin invent ens permet parlar amb algú que és lluny? | el telèfon | la roda | el rellotge | la cullera
+| Quin invent ens dona llum a casa amb electricitat? | la bombeta | l'espelma | el foc | el mirall
+| Amb quin aparell veiem coses molt i molt petites? | el microscopi | el telescopi | la ràdio | la tele
+| Quin invent ens permet volar? | l'avió | el submarí | el tren | la bicicleta
+| Quin aparell indica sempre el nord? | la brúixola | el rellotge | el termòmetre | la calculadora
 *🖨️ | Qui va inventar la impremta per fer llibres més de pressa? | Gutenberg | Edison | Einstein | Gaudí
 *✈️ | Qui van fer volar el primer avió amb motor? | els germans Wright | els germans Grimm | els germans Marx | els germans Lumière
 *🌊 | Quin invent va fer el català Narcís Monturiol? | un submarí | un avió | un telèfon | una bicicleta
