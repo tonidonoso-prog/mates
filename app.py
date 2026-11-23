@@ -2468,8 +2468,36 @@ def new_repte():
                               "t0": time.time(), "log": []}
     st.session_state.repte_report = None
 
+@st.cache_resource
+def _obertures():
+    """Quantes vegades s'obre cada joc (nomes un numero per joc, de ningu en concret). A la memoria del
+    servidor i a obertures.json; es perd si Streamlit Cloud reinstal·la l'app (24 nov 2026)."""
+    f = BASE_DIR / "obertures.json"
+    try:
+        return {"f": f, "n": {k: int(v) for k, v in json.loads(f.read_text()).items()}}
+    except Exception:
+        return {"f": f, "n": {}}
+
+
+def compta_obertura(block):
+    o = _obertures()
+    o["n"][block] = o["n"].get(block, 0) + 1
+    try:
+        o["f"].write_text(json.dumps(o["n"]))
+    except Exception:
+        pass
+
+
+def blocs_ordenats():
+    """KAHOOT sempre el primer (el que mes tira, el Toni ho va demanar); la resta, dels mes oberts als menys."""
+    n = _obertures()["n"]
+    resta = sorted((b for b in BLOCKS if b[2] != "Concurs"), key=lambda b: -n.get(b[2], 0))
+    return [b for b in BLOCKS if b[2] == "Concurs"] + resta
+
+
 def start_block(block):
     ss = st.session_state
+    compta_obertura(block)
     ss.current_block = block
     ss.words_pool = []; ss.reading_pos = ss.rival_pos = 0; ss.lectura_avis = False
     if block == "Repte": new_repte()
@@ -3313,7 +3341,8 @@ def nova_cara():
         "z-index:999;border:0}</style>", unsafe_allow_html=True)
     args = dict(
         blocs=[{"id": b, "nom": nom, "desc": desc, "img": IMG_BLOC[b],
-                "nou": b in NOU_FINS and avui() <= NOU_FINS[b]} for _, nom, b, desc in BLOCKS],
+                "nou": b in NOU_FINS and avui() <= NOU_FINS[b]} for _, nom, b, desc in blocs_ordenats()],
+        calcul_tipus=[[k, l.capitalize()] for l, k in CALCUL_KINDS],
         categories=[{"id": c, "nom": nom.split(" ", 1)[1], "img": f"cat_{c}",
                      "temes": [{"id": t, "nom": l} for t, l in CT.temes_de(c)]} for c, nom in CT.CATEGORIES],
         nivell=ss.diff, nivells=[d for d, _ in DIFFS], records=ss.cq_records,
@@ -3353,14 +3382,33 @@ def _fes_accio(val):
         nivell = val.get("nivell") if val.get("nivell") in CONCURS_SEGONS else ss.diff
         ss.nou_partida = {"id": val.get("id"), "tema": tema, "nivell": nivell, "segons": CONCURS_SEGONS[nivell],
                           "preguntes": cq_tria(tema, nivell)}
-    elif accio == "lot" and val.get("joc") == "mates":
-        # tanda de 20 exercicis de MATES (el mateix generador de sempre)
-        op = val.get("op") if val.get("op") in {m for _, m, _ in OPS} else "Sumes"
+    elif accio == "lot" and val.get("joc") in ("Mates", "Calcul", "Repte"):
+        # tanda d'exercicis [text, resposta, html, tipus] amb els generadors de sempre
+        joc, op = val["joc"], val.get("op")
         nivell = val.get("nivell") if val.get("nivell") in CONCURS_SEGONS else ss.diff
-        ss.nou_lot = {"id": val.get("id"), "joc": "mates", "op": op, "nivell": nivell,
-                      "problemes": [list(make_math(nivell, op)) for _ in range(20)]}
+        noms = {k: l.capitalize() for l, k in CALCUL_KINDS}
+        if joc == "Mates":
+            op = op if op in {m for _, m, _ in OPS} else "Sumes"
+            problemes = [[*make_math(nivell, op), None, op] for _ in range(20)]
+        elif joc == "Calcul":
+            op = op if op in noms else "Tots"
+            problemes = [list(make_calcul(nivell, op)) + [noms.get(op, "")] for _ in range(20)]
+        else:          # REPTE: 10 barrejats, mitat operacions i mitat calcul mental, al nivell triat
+            problemes = []
+            for _ in range(REPTE_LEN):
+                if random.random() < 0.5:
+                    problemes.append([*make_math(nivell, random.choice([m for _, m, _ in OPS])), None, "Càlcul"])
+                else:
+                    k = random.choice(CALCUL_ALL)
+                    problemes.append(list(make_calcul(nivell, k)) + [noms[k]])
+        ss.nou_lot = {"id": val.get("id"), "joc": joc, "op": op or "", "nivell": nivell, "problemes": problemes}
     elif accio == "resultats":
         compta_respostes(val.get("respostes", [])[:20])
+        if val.get("repte"):
+            ss.partides += 1
+            sync_progres()
+    elif accio == "obre" and val.get("bloc") in NOM_BLOC:
+        compta_obertura(val["bloc"])
     elif accio == "final":
         compta_respostes(val.get("respostes", [])[:CONCURS_N])
         clau = f"{val.get('tema')}|{val.get('nivell')}"
@@ -3391,8 +3439,9 @@ if st.session_state.current_block == "Home":
             f" !important; box-shadow: 0 5px 0 #C8900E !important; color: #5A3E00 !important; }}"
             for b in nous) + "</style>", unsafe_allow_html=True)
     with st.container(key="homeblocks"):
-        for i in range(0, len(BLOCKS), 3):
-            fila = BLOCKS[i:i + 3]
+        ordre = blocs_ordenats()
+        for i in range(0, len(ordre), 3):
+            fila = ordre[i:i + 3]
             cols = st.columns(3)
             if len(fila) == 1:
                 cols = cols[1:2]

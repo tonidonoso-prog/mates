@@ -47,7 +47,7 @@
     if (A.ack) perEnviar = perEnviar.filter((a) => A.ack.indexOf(a.id) < 0);
     if (A.lot && lotDemanat && A.lot.id === lotDemanat) {
       lotDemanat = null;
-      if (M && A.lot.op === M.op && A.lot.nivell === A.nivell) {
+      if (M && A.lot.joc === M.joc && A.lot.op === M.op && A.lot.nivell === A.nivell) {
         M.cua = M.cua.concat(A.lot.problemes);
         if (!M.actual) { seguentMates(); return; }
       }
@@ -55,7 +55,7 @@
     if (A.partida && pendent && A.partida.id === pendent) {
       pendent = null;
       comencaPartida(A.partida);
-    } else if (vista !== "partida" && vista !== "carregant" && vista !== "mates") {
+    } else if (["partida", "carregant", "mates", "informe"].indexOf(vista) < 0) {
       pinta();
     }
     mostraAvisos();
@@ -119,14 +119,15 @@
   // ---------------------------------------------------------------- accions
   function accio(fa, arg) {
     if (fa === "bloc") {
-      if (arg === "Concurs") { vista = "categories"; pinta(); }
-      else if (arg === "Mates") comencaMates(M ? M.op : "Sumes");
+      if (arg === "Concurs") { demana("obre", { bloc: arg }); vista = "categories"; pinta(); }
+      else if (JOCS[arg]) { demana("obre", { bloc: arg }); comencaExercicis(arg); }
       else demana("bloc", { bloc: arg });
     } else if (fa === "nivell") {
       A.nivell = arg; demana("nivell", { nivell: arg });
-      if (vista === "mates") comencaMates(M.op); else pinta();
+      if (vista === "mates") comencaExercicis(M.joc, M.op); else pinta();
     }
-    else if (fa === "op") comencaMates(arg);
+    else if (fa === "op") comencaExercicis(M.joc, arg);
+    else if (fa === "repte_altre") comencaExercicis("Repte");
     else if (fa === "tecla") tecla(arg);
     else if (fa === "mates_inici") { enviaResultats(); vista = "inici"; pinta(); }
     else if (fa === "inici") { vista = "inici"; pinta(); }
@@ -207,52 +208,77 @@
       <section class="temes">${temes}</section>`;
   }
 
-  // ---------------------------------------------------------------- MATES
-  const OPS = [["Sumes", "➕", "Sumes"], ["Restes", "➖", "Restes"], ["Multiplicació", "✖️", "Multiplicacions"]];
+  // ---------------------------------------------------------------- EXERCICIS AMB TECLAT
+  // Un sol motor per a MATES (operacions), CÀLCUL MENTAL (12 tipus) i REPTE (10 barrejats + informe).
+  const JOCS = {
+    Mates: { titol: "Mates", img: "mates", ops: [["Sumes", "➕ Sumes"], ["Restes", "➖ Restes"], ["Multiplicació", "✖️ Multiplicacions"]] },
+    Calcul: { titol: "Càlcul mental", img: "calcul", ops: null },
+    Repte: { titol: "Repte", img: "repte", ops: null },
+  };
+  const REPTE_LEN = 10;
 
-  function comencaMates(op) {
+  function comencaExercicis(joc, op) {
     enviaResultats();
-    M = { op: op, cua: [], actual: null, escrit: "", intents: 0, punts: M ? M.punts : 0, ratxa: M ? M.ratxa : 0, pendents: [] };
+    const ops = joc === "Calcul" ? A.calcul_tipus : JOCS[joc].ops;
+    op = op || (M && M.joc === joc ? M.op : (ops ? ops[0][0] : ""));
+    M = { joc: joc, op: op, cua: [], actual: null, escrit: "", intents: 0,
+          punts: M ? M.punts : 0, ratxa: M ? M.ratxa : 0, pendents: [],
+          repte: joc === "Repte" ? { i: 0, ok: 0, log: [], t0: performance.now() } : null };
+    lotDemanat = null;
     vista = "mates";
     pintaMates();
     demanaLot();
   }
   function demanaLot() {
     if (lotDemanat) return;
-    lotDemanat = "l" + Date.now();
-    demana("lot", { joc: "mates", op: M.op, nivell: A.nivell, id: lotDemanat });
+    lotDemanat = "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    demana("lot", { joc: M.joc, op: M.op, nivell: A.nivell, id: lotDemanat });
   }
   function enviaResultats() {
-    if (M && M.pendents.length) { demana("resultats", { respostes: M.pendents }); M.pendents = []; }
+    if (M && M.pendents.length) { demana("resultats", { respostes: M.pendents, repte: !!(M.repte && M.repte.i >= REPTE_LEN) }); M.pendents = []; }
   }
   function seguentMates() {
+    if (M.repte && M.repte.i >= REPTE_LEN) return informeRepte();
     M.actual = M.cua.shift() || null; M.escrit = ""; M.intents = 0;
-    if (M.cua.length < 4) demanaLot();
+    if (!M.repte && M.cua.length < 4) demanaLot();
     pintaMates();
   }
 
+  function caixaEscrit() {
+    return `<span class="escrit${M.escrit ? "" : " buit"}" id="escrit">${M.escrit ? esc(M.escrit) : "?"}</span>`;
+  }
+  function enunciatHtml(p) {
+    // si l'enunciat ja porta "?" (7 + ? = 10), la casella va al seu lloc; si no, va al final
+    let t = esc(p[0]).replace(/ x /g, " × ").replace(/ - /g, " − ");
+    if (p[2]) return `<div class="piramide">${p[2]}</div><p class="operacio petita">${caixaEscrit()}</p>`;
+    const llarg = p[0].length > 16;
+    t = t.indexOf("?") >= 0 ? t.replace("?", caixaEscrit()) : t + " = " + caixaEscrit();
+    return `<p class="operacio${llarg ? " llarga" : ""}">${t}</p>`;
+  }
+
   function pintaMates() {
-    const ops = OPS.map(([op, ic, nom]) =>
-      `<button class="op-tria" aria-pressed="${M.op === op}" data-fa="op" data-arg="${op}"><span aria-hidden="true">${ic}</span> ${nom}</button>`).join("");
+    const J = JOCS[M.joc];
+    const ops = M.joc === "Calcul" ? A.calcul_tipus : J.ops;
+    const triaOps = ops ? `<div class="ops${M.joc === "Calcul" ? " moltes" : ""}" role="group" aria-label="Tipus">${ops.map(([op, nom]) =>
+      `<button class="op-tria" aria-pressed="${M.op === op}" data-fa="op" data-arg="${esc(op)}">${esc(nom)}</button>`).join("")}</div>` : "";
     const p = M.actual;
-    const text = p ? esc(p[0]).replace(/ x /g, " × ").replace(/ - /g, " − ") : "";
+    const comptador = M.repte ? `<p class="ajuda">Exercici ${Math.min(M.repte.i + 1, REPTE_LEN)} de ${REPTE_LEN}</p>` : "";
     const tecles = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "esborra", "0", "ok"].map((t) =>
       `<button class="tecla${t === "ok" ? " ok" : t === "esborra" ? " esborra" : ""}" data-fa="tecla" data-arg="${t}"
         aria-label="${t === "ok" ? "Comprovar" : t === "esborra" ? "Esborrar" : t}">${t === "ok" ? "✓" : t === "esborra" ? "⌫" : t}</button>`).join("");
     $app.innerHTML = `
       <div class="barra"><button class="tornar" data-fa="mates_inici" aria-label="Tornar a l'inici">‹</button>
-        <img class="mini" src="${img("mates")}" alt=""><h1>Mates</h1>
+        <img class="mini" src="${img(J.img)}" alt=""><h1>${J.titol}</h1>
         <span class="xips"><span class="xip">⭐ ${M.punts}</span><span class="xip">🔥 ${M.ratxa}</span></span></div>
       ${nivells()}
-      <div class="ops" role="group" aria-label="Operació">${ops}</div>
+      ${triaOps}${comptador}
       <section class="exercici">
-        <div class="pregunta mates-pregunta">
-          ${p ? `<p class="operacio">${text} = <span class="escrit${M.escrit ? "" : " buit"}" id="escrit">${M.escrit || "?"}</span></p>`
-              : "<p class='carregant'>Preparant…</p>"}
-        </div>
+        <div class="pregunta mates-pregunta">${p ? enunciatHtml(p) : "<p class='carregant'>Preparant…</p>"}</div>
         <p class="avis" id="avis"></p>
         <div class="teclat">${tecles}</div>
       </section>`;
+    const fila = document.querySelector(".ops.moltes"), sel = fila && fila.querySelector('[aria-pressed="true"]');
+    if (sel) fila.scrollLeft = sel.offsetLeft - fila.clientWidth / 2 + sel.clientWidth / 2;   // el tipus triat, a la vista
     alcada();
   }
 
@@ -265,12 +291,20 @@
     e.textContent = M.escrit || "?"; e.classList.toggle("buit", !M.escrit);
   }
 
+  function apunta(be) {
+    M.pendents.push(be);
+    if (M.repte) {
+      M.repte.i += 1; M.repte.ok += be ? 1 : 0;
+      M.repte.log.push({ tipus: M.actual[3] || "", be: be });
+    }
+  }
+
   function comprova() {
     if (!M.escrit) return;
     const bona = +M.escrit === M.actual[1];
     const avis = document.getElementById("avis");
     if (bona) {
-      M.punts += 1; M.ratxa += 1; M.pendents.push(true);
+      M.punts += 1; M.ratxa += 1; apunta(true);
       avis.className = "avis si"; avis.textContent = ["Molt bé!", "Ho has clavat!", "Genial!", "Correcte!"][Math.floor(Math.random() * 4)];
       so("si"); confeti(18);
       document.querySelector(".mates-pregunta").classList.add("encert");
@@ -282,13 +316,38 @@
       const c = document.querySelector(".mates-pregunta"); c.classList.remove("malament"); void c.offsetWidth; c.classList.add("malament");
       M.escrit = ""; const e = document.getElementById("escrit"); e.textContent = "?"; e.classList.add("buit");
     } else {
-      M.ratxa = 0; M.pendents.push(false); so("no");
+      M.ratxa = 0; apunta(false); so("no");
       avis.className = "avis no"; avis.textContent = "Era " + M.actual[1] + ". Seguim!";
       const e = document.getElementById("escrit"); e.textContent = M.actual[1]; e.classList.add("solucio");
       M.bloquejat = true;
       setTimeout(() => { M.bloquejat = false; seguentMates(); }, 2000);
     }
-    if (M.pendents.length >= 5) enviaResultats();      // es desa de cinc en cinc, no a cada tecla
+    if (M.pendents.length >= 5 || (M.repte && M.repte.i >= REPTE_LEN)) enviaResultats();   // de cinc en cinc
+  }
+
+  function informeRepte() {
+    const r = M.repte;
+    const pct = Math.round(100 * r.ok / REPTE_LEN);
+    const s = Math.round((performance.now() - r.t0) / 1000);
+    const nota = pct >= 90 ? "Excel·lent!" : pct >= 70 ? "Molt bé!" : pct >= 50 ? "Bon treball!" : "Seguim practicant!";
+    const fallats = {};
+    r.log.forEach((e) => { if (!e.be) fallats[e.tipus || "Càlcul"] = (fallats[e.tipus || "Càlcul"] || 0) + 1; });
+    const repassar = Object.keys(fallats).sort((a, b) => fallats[b] - fallats[a]).map((k) => `${esc(k)}: ${fallats[k]}`).join(" · ");
+    vista = "informe";
+    so("festa"); confeti(40);
+    $app.innerHTML = `
+      <section class="final">
+        <img class="mascota arriba" src="img/mascota.png" alt="">
+        <h1>${nota}</h1>
+        <div class="xifra">${r.ok} de ${REPTE_LEN}</div>
+        <div class="xips centrat"><span class="xip">🎯 ${pct}%</span><span class="xip">⏱️ ${Math.floor(s / 60)}m ${s % 60}s</span><span class="xip">📈 ${esc(A.nivell)}</span></div>
+        <p class="rec">${repassar ? "A repassar: <b>" + repassar + "</b>" : "Cap error. Impecable! ✨"}</p>
+        <div class="botons">
+          <button class="boto" style="--c:#12A982" data-fa="repte_altre">Un altre repte</button>
+          <button class="boto" style="--c:#2F8FEA" data-fa="inici">Inici</button>
+        </div>
+      </section>`;
+    window.scrollTo(0, 0);
   }
 
   // ---------------------------------------------------------------- partida
