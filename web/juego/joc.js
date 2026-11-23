@@ -55,7 +55,7 @@
     if (A.partida && pendent && A.partida.id === pendent) {
       pendent = null;
       comencaPartida(A.partida);
-    } else if (["partida", "carregant", "mates", "informe"].indexOf(vista) < 0) {
+    } else if (["partida", "carregant", "mates", "informe", "recta"].indexOf(vista) < 0) {
       pinta();
     }
     mostraAvisos();
@@ -104,10 +104,9 @@
     b.classList.remove("premut"); b.classList.remove("boing"); void b.offsetWidth; b.classList.add("boing");
   }, true));
   document.addEventListener("keydown", (e) => {
-    if (vista !== "mates") return;
-    if (/^[0-9]$/.test(e.key)) tecla(e.key);
-    else if (e.key === "Backspace") tecla("esborra");
-    else if (e.key === "Enter") tecla("ok");
+    const t = /^[0-9]$/.test(e.key) ? e.key : e.key === "Backspace" ? "esborra" : e.key === "Enter" ? "ok" : null;
+    if (!t) return;
+    if (vista === "mates") tecla(t); else if (vista === "recta") teclaRecta(t);
   });
   document.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-fa]"); if (!b) return;
@@ -121,14 +120,19 @@
     if (fa === "bloc") {
       if (arg === "Concurs") { demana("obre", { bloc: arg }); vista = "categories"; pinta(); }
       else if (JOCS[arg]) { demana("obre", { bloc: arg }); comencaExercicis(arg); }
+      else if (arg === "Recta") { demana("obre", { bloc: arg }); comencaRecta(RT ? RT.op : "suma"); }
       else demana("bloc", { bloc: arg });
     } else if (fa === "nivell") {
       A.nivell = arg; demana("nivell", { nivell: arg });
-      if (vista === "mates") comencaExercicis(M.joc, M.op); else pinta();
+      if (vista === "mates") comencaExercicis(M.joc, M.op);
+      else if (vista === "recta") comencaRecta(RT.op);
+      else pinta();
     }
     else if (fa === "op") comencaExercicis(M.joc, arg);
     else if (fa === "repte_altre") comencaExercicis("Repte");
-    else if (fa === "tecla") tecla(arg);
+    else if (fa === "tecla") { if (vista === "recta") teclaRecta(arg); else tecla(arg); }
+    else if (fa === "recta_op") comencaRecta(arg);
+    else if (fa === "recta_inici") { enviaRecta(); vista = "inici"; pinta(); }
     else if (fa === "mates_inici") { enviaResultats(); vista = "inici"; pinta(); }
     else if (fa === "inici") { vista = "inici"; pinta(); }
     else if (fa === "categories") { vista = "categories"; pinta(); }
@@ -349,6 +353,139 @@
         </div>
       </section>`;
     window.scrollTo(0, 0);
+  }
+
+  // ---------------------------------------------------------------- RECTA NUMÈRICA
+  // 24 + 17: salt de +10 fins al 34 i salt de +7 fins al 41; cada parada és una casella per omplir.
+  // Les sumes van cap a la dreta i les restes cap a l'esquerra, com a l'escola (24 nov 2026, el Toni).
+  let RT = null;
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+  function genRecta(nivell, op) {
+    let a, b;
+    if (nivell === "Fàcil") { b = rnd(11, 29); a = op === "suma" ? rnd(11, 60) : rnd(b + 5, 90); }
+    else if (nivell === "Normal") { b = rnd(21, 39); a = op === "suma" ? rnd(15, 59) : rnd(b + 10, 99); }
+    else { b = rnd(23, 89); a = op === "suma" ? rnd(101, 499) : rnd(b + 40, 599); }
+    if (b % 10 === 0) b += rnd(1, 9);
+    const salts = nivell === "Difícil" ? [Math.floor(b / 10) * 10] : Array(Math.floor(b / 10)).fill(10);
+    salts.push(b % 10);
+    const punts = [a];
+    salts.forEach((sx) => punts.push(punts[punts.length - 1] + (op === "suma" ? sx : -sx)));
+    return { a: a, b: b, op: op, salts: salts, punts: punts };
+  }
+
+  function comencaRecta(op) {
+    enviaRecta();
+    RT = { op: op, punts: RT ? RT.punts : 0, ratxa: RT ? RT.ratxa : 0, pendents: [] };
+    vista = "recta";
+    novaRecta();
+  }
+  function enviaRecta() {
+    if (RT && RT.pendents.length) { demana("resultats", { respostes: RT.pendents }); RT.pendents = []; }
+  }
+  function novaRecta() {
+    RT.p = genRecta(A.nivell, RT.op);
+    RT.actiu = 1; RT.escrit = ""; RT.intents = 0; RT.errors = 0;
+    RT.fets = [String(RT.p.a)];              // el que hi ha escrit a cada casella
+    RT.estat = ["donat"];                     // donat | be | ajuda
+    pintaRecta();
+  }
+
+  function rectaSvg() {
+    const p = RT.p, n = p.salts.length, W = 360, H = 170, Y = 92, M = 34;
+    const amples = p.salts.map((sx) => sx >= 10 ? 1 + Math.min(sx, 50) / 100 : .62);
+    const total = amples.reduce((x, y) => x + y, 0);
+    const xs = [0];
+    amples.forEach((w) => xs.push(xs[xs.length - 1] + (W - 2 * M) * w / total));
+    const X = (i) => p.op === "suma" ? M + xs[i] : W - M - xs[i];
+    let svg = `<svg class="recta-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Recta numèrica">`;
+    svg += `<line x1="8" y1="${Y}" x2="${W - 8}" y2="${Y}" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`;
+    svg += p.op === "suma" ? `<path d="M${W - 18} ${Y - 8} L${W - 6} ${Y} L${W - 18} ${Y + 8}" fill="none" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`
+                           : `<path d="M18 ${Y - 8} L6 ${Y} L18 ${Y + 8}" fill="none" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`;
+    for (let i = 0; i < n; i++) {
+      const x1 = X(i), x2 = X(i + 1), h = Math.min(30, 14 + Math.abs(x2 - x1) * .16), mig = (x1 + x2) / 2;   // l'etiqueta mai surt per dalt
+      const fet = i < RT.actiu - 0 && RT.estat[i + 1];
+      svg += `<path d="M${x1} ${Y - 6} Q${mig} ${Y - 6 - 2 * h} ${x2} ${Y - 6}" fill="none" stroke="${fet ? "#12A982" : "#7A5AF0"}" stroke-width="4" stroke-dasharray="${fet ? "0" : "7 6"}" stroke-linecap="round"/>`;
+      svg += `<path d="M${x2 - (p.op === "suma" ? 9 : -9)} ${Y - 14} L${x2} ${Y - 5} L${x2 - (p.op === "suma" ? 1 : -1)} ${Y - 17}" fill="none" stroke="${fet ? "#12A982" : "#7A5AF0"}" stroke-width="4" stroke-linecap="round"/>`;
+      svg += `<text x="${mig}" y="${Y - 12 - h}" text-anchor="middle" class="salt">${p.op === "suma" ? "+" : "−"}${p.salts[i]}</text>`;
+    }
+    for (let i = 0; i <= n; i++) {
+      const x = X(i), est = RT.estat[i], actiu = i === RT.actiu;
+      const val = i === RT.actiu ? (RT.escrit || "?") : (RT.fets[i] || "");
+      const cls = est === "donat" ? "donat" : est === "be" ? "be" : est === "ajuda" ? "ajuda" : actiu ? "actiu" : "buida";
+      svg += `<line x1="${x}" y1="${Y - 9}" x2="${x}" y2="${Y + 9}" stroke="#3B2A5C" stroke-width="4" stroke-linecap="round"/>`;
+      svg += `<g class="caixa ${cls}"><rect x="${x - 27}" y="${Y + 18}" width="54" height="40" rx="12"/>
+              <text x="${x}" y="${Y + 46}" text-anchor="middle">${esc(val)}</text></g>`;
+    }
+    return svg + "</svg>";
+  }
+
+  function pintaRecta() {
+    const p = RT.p, signe = p.op === "suma" ? "+" : "−";
+    const ultim = RT.estat[p.punts.length - 1];
+    const tecles = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "esborra", "0", "ok"].map((t) =>
+      `<button class="tecla${t === "ok" ? " ok" : t === "esborra" ? " esborra" : ""}" data-fa="tecla" data-arg="${t}"
+        aria-label="${t === "ok" ? "Comprovar" : t === "esborra" ? "Esborrar" : t}">${t === "ok" ? "✓" : t === "esborra" ? "⌫" : t}</button>`).join("");
+    $app.innerHTML = `
+      <div class="barra"><button class="tornar" data-fa="recta_inici" aria-label="Tornar a l'inici">‹</button>
+        <img class="mini" src="${img("recta")}" alt=""><h1>Recta numèrica</h1>
+        <span class="xips"><span class="xip">⭐ ${RT.punts}</span><span class="xip">🔥 ${RT.ratxa}</span></span></div>
+      ${nivells()}
+      <div class="ops" role="group" aria-label="Operació">
+        <button class="op-tria" aria-pressed="${RT.op === "suma"}" data-fa="recta_op" data-arg="suma">➕ Sumes ➡️</button>
+        <button class="op-tria" aria-pressed="${RT.op === "resta"}" data-fa="recta_op" data-arg="resta">⬅️ Restes ➖</button></div>
+      <section class="exercici">
+        <div class="pregunta mates-pregunta recta">
+          <p class="consigna">${p.op === "suma" ? "Fes els salts cap a la dreta" : "Fes els salts cap a l'esquerra"} i escriu on arribes a cada salt.</p>
+          <p class="operacio llarga">${p.a} ${signe} ${p.b} = <span class="escrit${ultim ? " solucio" : " buit"}">${ultim ? RT.fets[p.punts.length - 1] : "?"}</span></p>
+          ${rectaSvg()}
+        </div>
+        <p class="avis" id="avis"></p>
+        <div class="teclat">${tecles}</div>
+      </section>`;
+    alcada();
+  }
+
+  function teclaRecta(t) {
+    if (!RT || RT.bloquejat) return;
+    if (t === "esborra") RT.escrit = RT.escrit.slice(0, -1);
+    else if (t === "ok") return comprovaRecta();
+    else if (RT.escrit.length < 4) RT.escrit += t;
+    const caixa = document.querySelectorAll(".recta-svg .caixa")[RT.actiu];
+    if (caixa) caixa.querySelector("text").textContent = RT.escrit || "?";
+  }
+
+  function comprovaRecta() {
+    if (!RT.escrit) return;
+    const p = RT.p, i = RT.actiu, bona = +RT.escrit === p.punts[i];
+    const ultima = i === p.punts.length - 1;
+    const avisa = (cls, text) => { const a = document.getElementById("avis"); a.className = "avis " + cls; a.textContent = text; };
+    if (bona || RT.intents >= 1) {
+      if (!bona) RT.errors += 1;
+      RT.fets[i] = String(p.punts[i]); RT.estat[i] = bona ? "be" : "ajuda";
+      RT.actiu = i + 1; RT.escrit = ""; RT.intents = 0;
+      pintaRecta();
+      if (!ultima) {
+        if (bona) { so("toc"); avisa("si", "Molt bé! Ara el salt següent"); }
+        else { so("no"); avisa("no", "Era " + p.punts[i] + ". Seguim saltant!"); }
+        return;
+      }
+      const be = RT.errors === 0;
+      RT.pendents.push(be);
+      if (be) { RT.punts += 1; RT.ratxa += 1; so("si"); confeti(22); avisa("si", `Molt bé! ${p.a} ${p.op === "suma" ? "+" : "−"} ${p.b} = ${p.punts[i]}`); }
+      else { RT.ratxa = 0; so("no"); avisa("no", `${p.a} ${p.op === "suma" ? "+" : "−"} ${p.b} = ${p.punts[i]}. La pròxima, segur!`); }
+      document.querySelectorAll(".xip")[0].textContent = "⭐ " + RT.punts;
+      document.querySelectorAll(".xip")[1].textContent = "🔥 " + RT.ratxa;
+      if (RT.pendents.length >= 5) enviaRecta();
+      RT.bloquejat = true;
+      setTimeout(() => { RT.bloquejat = false; novaRecta(); }, 2300);
+    } else {
+      RT.intents = 1; so("no"); avisa("no", "Gairebé! Torna-ho a provar");
+      RT.escrit = "";
+      const caixa = document.querySelectorAll(".recta-svg .caixa")[i];
+      caixa.querySelector("text").textContent = "?";
+      caixa.classList.remove("tremola"); void caixa.getBoundingClientRect(); caixa.classList.add("tremola");
+    }
   }
 
   // ---------------------------------------------------------------- partida

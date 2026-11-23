@@ -671,7 +671,7 @@ CONCURS_N = 10                                            # preguntes per partid
 CONCURS_SEGONS = {"Fàcil": 25, "Normal": 20, "Difícil": 15}
 CONCURS_PAUSA = 2.5           # segons que es veu si l'ha encertada abans de la seguent
 # blocs nous: a la portada surten daurats i amb "NOU!" fins a aquesta data
-NOU_FINS = {"Concurs": datetime.date(2026, 12, 15)}
+NOU_FINS = {"Concurs": datetime.date(2026, 12, 15), "Recta": datetime.date(2026, 12, 24)}
 
 
 def _opcions_numeriques(ans):
@@ -2488,10 +2488,15 @@ def compta_obertura(block):
         pass
 
 
-def blocs_ordenats():
+# Jocs que nomes existeixen a la cara nova (24 nov 2026: la recta numerica, com a l'escola)
+BLOCS_NOUS = [("📏", "RECTA NUMÈRICA", "Recta", "Suma i resta fent salts de 10")]
+
+
+def blocs_ordenats(amb_nous=False):
     """KAHOOT sempre el primer (el que mes tira, el Toni ho va demanar); la resta, dels mes oberts als menys."""
     n = _obertures()["n"]
-    resta = sorted((b for b in BLOCKS if b[2] != "Concurs"), key=lambda b: -n.get(b[2], 0))
+    tots = BLOCKS + (BLOCS_NOUS if amb_nous else [])
+    resta = sorted((b for b in tots if b[2] != "Concurs"), key=lambda b: -n.get(b[2], 0))
     return [b for b in BLOCKS if b[2] == "Concurs"] + resta
 
 
@@ -3315,7 +3320,7 @@ cg_entra_per_url()          # si s'ha obert amb el QR d'una sala (?sala=<PIN>), 
 _AVENTURA = components.declare_component("aventura", path=str(BASE_DIR / "web" / "juego"))
 IMG_BLOC = {"Mates": "mates", "Calcul": "calcul", "Lectura": "lectura", "Lletres": "lletres", "Sopa": "sopa",
             "Memory": "memory", "Penjat": "penjat", "Colors": "colors", "Golut": "golut", "Concurs": "concurs",
-            "Repte": "repte"}
+            "Repte": "repte", "Recta": "recta"}
 
 
 # Una frase per a cada tipus de calcul mental: sense ella la piramide no l'entenia ningu (24 nov 2026, el Toni)
@@ -3357,7 +3362,7 @@ def nova_cara():
         "z-index:999;border:0}</style>", unsafe_allow_html=True)
     args = dict(
         blocs=[{"id": b, "nom": nom, "desc": desc, "img": IMG_BLOC[b],
-                "nou": b in NOU_FINS and avui() <= NOU_FINS[b]} for _, nom, b, desc in blocs_ordenats()],
+                "nou": b in NOU_FINS and avui() <= NOU_FINS[b]} for _, nom, b, desc in blocs_ordenats(amb_nous=True)],
         calcul_tipus=[[k, l.capitalize()] for l, k in CALCUL_KINDS],
         categories=[{"id": c, "nom": nom.split(" ", 1)[1], "img": f"cat_{c}",
                      "temes": [{"id": t, "nom": l} for t, l in CT.temes_de(c)]} for c, nom in CT.CATEGORIES],
@@ -3426,7 +3431,7 @@ def _fes_accio(val):
         if val.get("repte"):
             ss.partides += 1
             sync_progres()
-    elif accio == "obre" and val.get("bloc") in NOM_BLOC:
+    elif accio == "obre" and (val.get("bloc") in NOM_BLOC or val.get("bloc") in {b[2] for b in BLOCS_NOUS}):
         compta_obertura(val["bloc"])
     elif accio == "final":
         compta_respostes(val.get("respostes", [])[:CONCURS_N])

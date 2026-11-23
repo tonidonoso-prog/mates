@@ -184,6 +184,21 @@ img { user-select: none; -webkit-user-drag: none; }
 .piramide .brick.ask:has(.escrit:not(.buit)) { border-style: solid; }
 .piramide .brick.ask background: var(--blanc); border: 4px dashed var(--tomata); color: var(--tomata); }
 
+/* ---------- recta numèrica ---------- */
+.recta-svg { width: 100%; height: auto; display: block; margin: 4px auto 0; max-width: 560px; overflow: visible; }
+.recta-svg .salt { font-family: var(--titol); font-size: 19px; fill: var(--raim); }
+.caixa rect { fill: var(--blanc); stroke: #C9C0DD; stroke-width: 3; }
+.caixa text { font-family: var(--titol); font-size: 21px; fill: var(--tinta); }
+.caixa.donat rect { fill: #FFF1C7; stroke: var(--gira-sol); }
+.caixa.actiu rect { fill: #F1ECFF; stroke: var(--raim); stroke-width: 4; stroke-dasharray: 7 5; }
+.caixa.actiu text { fill: var(--raim); }
+.caixa.be rect { fill: #DDF8EE; stroke: #12A982; }
+.caixa.be text { fill: #0E7A5D; }
+.caixa.ajuda rect { fill: #FFE9D6; stroke: var(--tomata); }
+.caixa.buida text { fill: transparent; }
+.caixa.tremola { animation: no 420ms; transform-box: fill-box; transform-origin: center; }
+.mates-pregunta.recta { padding: 18px 10px 12px; }
+
 /* ---------- final ---------- */
 .final { text-align: center; display: grid; gap: 12px; justify-items: center; padding-top: 10px; }
 .final .mascota { width: 170px; }
