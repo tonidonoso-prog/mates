@@ -46,6 +46,15 @@ with sync_playwright() as p:
             assert f.evaluate("() => document.getElementById('rodet').scrollTop") < 5
 
         prova("portada")
+        # un joc obert amb la portada baixada ha de començar a dalt
+        dit(-500)
+        f.locator("button[data-arg='Calcul']").evaluate("b => b.click()"); f.locator(".teclat").wait_for(timeout=15000); time.sleep(1)
+        assert f.evaluate("() => document.getElementById('rodet').scrollTop") < 5, "Càlcul no comença a dalt"
+        f.locator("button[data-fa='mates_inici']").click(); time.sleep(2)
+        dit(-500)
+        f.locator("button[data-arg='Recta']").evaluate("b => b.click()"); f.locator(".recta-svg").wait_for(timeout=15000); time.sleep(1)
+        assert f.evaluate("() => document.getElementById('rodet').scrollTop") < 5, "Recta no comença a dalt"
+        f.locator("button[data-fa='recta_inici']").click(); time.sleep(2)
         f.locator("button[data-arg='Concurs']").click(); time.sleep(2.5); prova("kahoot")
         f.locator("button.nav.inici").first.click(); time.sleep(2)
         f.locator("button[data-arg='Recta']").click(); f.locator(".recta-svg").wait_for(timeout=15000); time.sleep(1); prova("recta")

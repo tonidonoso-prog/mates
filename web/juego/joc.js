@@ -239,6 +239,7 @@
     lotDemanat = null;
     vista = "mates";
     pintaMates();
+    adalt();                 // si venim de la portada baixada, el joc comença a dalt
     demanaLot();
   }
   function demanaLot() {
@@ -389,6 +390,7 @@
     RT = { op: op, punts: RT ? RT.punts : 0, ratxa: RT ? RT.ratxa : 0, pendents: [] };
     vista = "recta";
     novaRecta();
+    adalt();
   }
   function enviaRecta() {
     if (RT && RT.pendents.length) { demana("resultats", { respostes: RT.pendents }); RT.pendents = []; }
