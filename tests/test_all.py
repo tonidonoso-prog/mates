@@ -23,7 +23,7 @@ BLOCS = ("Mates", "Calcul", "Lectura", "Lletres", "Sopa", "Memory", "Penjat", "C
 SENSE_NIVELL = ("Lletres", "Colors")
 for blk in BLOCS:
     assert f"home_{blk}" in keys, (blk, keys)
-assert "home_cal" in keys and "home_rank" not in keys
+assert "home_cal" not in keys and "home_rank" not in keys    # fora el calendari (24 nov 2026)
 labels = " ".join(b.label for b in at.button).upper()
 # KAHOOT ja no hi es: el 23 nov 2026 el Toni va decidir dir-li Kahoot (app nomes per a la gent de l'escola)
 for prohibit in ("INNOVAMAT", "CLASSIFICACI", "SUSHI"):
@@ -38,11 +38,6 @@ for blk in BLOCS:
             run(at)
     at.button(key="ctl_home").click()
     run(at)
-at.button(key="home_cal").click()
-run(at)
-assert at.session_state.current_block == "Calendari"
-at.button(key="cal_home").click()
-run(at)
 
 # privacitat (17-nov-2026, decisio del Toni): enlloc es demana el nom. Qui juga es un numero a
 # l'atzar del dispositiu, i el que va al servidor nomes en porta aquest numero.
@@ -57,4 +52,4 @@ assert at.session_state.jugador == "0123456789abcdef"
 assert "Donoso" not in open("app.py", encoding="utf-8").read()
 gifs = [f for f in os.listdir("static/festa") if f.endswith(".webp")]
 assert len(gifs) >= 40, len(gifs)
-print("AppTest tot OK:", len(BLOCS), "blocs + calendari + sense noms + %d animacions" % len(gifs) + "")
+print("AppTest tot OK:", len(BLOCS), "blocs + sense calendari ni noms + %d animacions" % len(gifs) + "")

@@ -15,22 +15,47 @@
   let pendent = null;        // id de la partida que hem demanat
   let P = null;              // partida en curs
   let avisosVistos = 0;
+  let M = null;              // partida de mates: {op, cua, actual, escrit, intents, punts, ratxa, pendents}
+  let lotDemanat = null;
   let primerCop = true;
 
   // ---------------------------------------------------------------- protocol de Streamlit
   function envia(tipus, dades) {
     window.parent.postMessage(Object.assign({ isStreamlitMessage: true, apiVersion: 1, type: tipus }, dades || {}), "*");
   }
+  // Cada accio porta un id i es torna a enviar fins que Python diu que l'ha feta (A.ack): si se n'envien
+  // dues seguides, Streamlit nomes veu l'ultim valor i la primera es perdia (24 nov 2026).
+  let perEnviar = [], programat = false, ultimEnviament = 0;
   function demana(accio, extra) {
-    envia("streamlit:setComponentValue", { value: Object.assign({ n: Date.now() + Math.random(), accio: accio }, extra || {}), dataType: "json" });
+    perEnviar.push(Object.assign({ id: "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), accio: accio }, extra || {}));
+    programa();
   }
+  function programa() {
+    if (programat) return;
+    programat = true;
+    setTimeout(() => {
+      programat = false;
+      if (!perEnviar.length) return;
+      ultimEnviament = Date.now();
+      envia("streamlit:setComponentValue", { value: { n: Date.now() + Math.random(), accions: perEnviar.slice() }, dataType: "json" });
+    }, 40);
+  }
+  setInterval(() => { if (perEnviar.length && Date.now() - ultimEnviament > 2500) programa(); }, 1000);
   window.addEventListener("message", function (e) {
     if (!e.data || e.data.type !== "streamlit:render") return;
     A = e.data.args || {};
+    if (A.ack) perEnviar = perEnviar.filter((a) => A.ack.indexOf(a.id) < 0);
+    if (A.lot && lotDemanat && A.lot.id === lotDemanat) {
+      lotDemanat = null;
+      if (M && A.lot.op === M.op && A.lot.nivell === A.nivell) {
+        M.cua = M.cua.concat(A.lot.problemes);
+        if (!M.actual) { seguentMates(); return; }
+      }
+    }
     if (A.partida && pendent && A.partida.id === pendent) {
       pendent = null;
       comencaPartida(A.partida);
-    } else if (vista !== "partida" && vista !== "carregant") {
+    } else if (vista !== "partida" && vista !== "carregant" && vista !== "mates") {
       pinta();
     }
     mostraAvisos();
@@ -78,6 +103,12 @@
     const b = e.target.closest && e.target.closest("button"); if (!b) return;
     b.classList.remove("premut"); b.classList.remove("boing"); void b.offsetWidth; b.classList.add("boing");
   }, true));
+  document.addEventListener("keydown", (e) => {
+    if (vista !== "mates") return;
+    if (/^[0-9]$/.test(e.key)) tecla(e.key);
+    else if (e.key === "Backspace") tecla("esborra");
+    else if (e.key === "Enter") tecla("ok");
+  });
   document.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-fa]"); if (!b) return;
     so("toc");
@@ -88,8 +119,16 @@
   // ---------------------------------------------------------------- accions
   function accio(fa, arg) {
     if (fa === "bloc") {
-      if (arg === "Concurs") { vista = "categories"; pinta(); } else demana("bloc", { bloc: arg });
-    } else if (fa === "nivell") { A.nivell = arg; demana("nivell", { nivell: arg }); pinta(); }
+      if (arg === "Concurs") { vista = "categories"; pinta(); }
+      else if (arg === "Mates") comencaMates(M ? M.op : "Sumes");
+      else demana("bloc", { bloc: arg });
+    } else if (fa === "nivell") {
+      A.nivell = arg; demana("nivell", { nivell: arg });
+      if (vista === "mates") comencaMates(M.op); else pinta();
+    }
+    else if (fa === "op") comencaMates(arg);
+    else if (fa === "tecla") tecla(arg);
+    else if (fa === "mates_inici") { enviaResultats(); vista = "inici"; pinta(); }
     else if (fa === "inici") { vista = "inici"; pinta(); }
     else if (fa === "categories") { vista = "categories"; pinta(); }
     else if (fa === "cat") { cat = arg; vista = "temes"; pinta(); }
@@ -132,13 +171,9 @@
       <header class="cap">
         <img class="mascota${primerCop ? " arriba" : ""}" src="img/mascota.png" alt="El robot de l'Aventura Matemàtica">
         <p class="bafarada"><b>Hola!</b>A què juguem avui?</p>
-        <div class="medalles" title="Medalles del dia"><img src="${img("estrella")}" alt="">${A.medalles}</div>
       </header>
       ${nivells()}
-      <section class="graella" aria-label="Jocs">${blocs}
-        <button class="gominola llarga" style="--c:#2F8FEA" data-fa="bloc" data-arg="Calendari">
-          <img src="${img("calendari")}" alt=""><span class="nom">El meu calendari i medalles</span></button>
-      </section>`;
+      <section class="graella" aria-label="Jocs">${blocs}</section>`;
     primerCop = false;
   }
 
@@ -170,6 +205,90 @@
         <img class="mini" src="${img(c.img)}" alt=""><h1>${esc(c.nom)}</h1></div>
       ${nivells()}
       <section class="temes">${temes}</section>`;
+  }
+
+  // ---------------------------------------------------------------- MATES
+  const OPS = [["Sumes", "➕", "Sumes"], ["Restes", "➖", "Restes"], ["Multiplicació", "✖️", "Multiplicacions"]];
+
+  function comencaMates(op) {
+    enviaResultats();
+    M = { op: op, cua: [], actual: null, escrit: "", intents: 0, punts: M ? M.punts : 0, ratxa: M ? M.ratxa : 0, pendents: [] };
+    vista = "mates";
+    pintaMates();
+    demanaLot();
+  }
+  function demanaLot() {
+    if (lotDemanat) return;
+    lotDemanat = "l" + Date.now();
+    demana("lot", { joc: "mates", op: M.op, nivell: A.nivell, id: lotDemanat });
+  }
+  function enviaResultats() {
+    if (M && M.pendents.length) { demana("resultats", { respostes: M.pendents }); M.pendents = []; }
+  }
+  function seguentMates() {
+    M.actual = M.cua.shift() || null; M.escrit = ""; M.intents = 0;
+    if (M.cua.length < 4) demanaLot();
+    pintaMates();
+  }
+
+  function pintaMates() {
+    const ops = OPS.map(([op, ic, nom]) =>
+      `<button class="op-tria" aria-pressed="${M.op === op}" data-fa="op" data-arg="${op}"><span aria-hidden="true">${ic}</span> ${nom}</button>`).join("");
+    const p = M.actual;
+    const text = p ? esc(p[0]).replace(/ x /g, " × ").replace(/ - /g, " − ") : "";
+    const tecles = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "esborra", "0", "ok"].map((t) =>
+      `<button class="tecla${t === "ok" ? " ok" : t === "esborra" ? " esborra" : ""}" data-fa="tecla" data-arg="${t}"
+        aria-label="${t === "ok" ? "Comprovar" : t === "esborra" ? "Esborrar" : t}">${t === "ok" ? "✓" : t === "esborra" ? "⌫" : t}</button>`).join("");
+    $app.innerHTML = `
+      <div class="barra"><button class="tornar" data-fa="mates_inici" aria-label="Tornar a l'inici">‹</button>
+        <img class="mini" src="${img("mates")}" alt=""><h1>Mates</h1>
+        <span class="xips"><span class="xip">⭐ ${M.punts}</span><span class="xip">🔥 ${M.ratxa}</span></span></div>
+      ${nivells()}
+      <div class="ops" role="group" aria-label="Operació">${ops}</div>
+      <section class="exercici">
+        <div class="pregunta mates-pregunta">
+          ${p ? `<p class="operacio">${text} = <span class="escrit${M.escrit ? "" : " buit"}" id="escrit">${M.escrit || "?"}</span></p>`
+              : "<p class='carregant'>Preparant…</p>"}
+        </div>
+        <p class="avis" id="avis"></p>
+        <div class="teclat">${tecles}</div>
+      </section>`;
+    alcada();
+  }
+
+  function tecla(t) {
+    if (!M || !M.actual || M.bloquejat) return;
+    if (t === "esborra") M.escrit = M.escrit.slice(0, -1);
+    else if (t === "ok") return comprova();
+    else if (M.escrit.length < 5) M.escrit += t;
+    const e = document.getElementById("escrit");
+    e.textContent = M.escrit || "?"; e.classList.toggle("buit", !M.escrit);
+  }
+
+  function comprova() {
+    if (!M.escrit) return;
+    const bona = +M.escrit === M.actual[1];
+    const avis = document.getElementById("avis");
+    if (bona) {
+      M.punts += 1; M.ratxa += 1; M.pendents.push(true);
+      avis.className = "avis si"; avis.textContent = ["Molt bé!", "Ho has clavat!", "Genial!", "Correcte!"][Math.floor(Math.random() * 4)];
+      so("si"); confeti(18);
+      document.querySelector(".mates-pregunta").classList.add("encert");
+      M.bloquejat = true;
+      setTimeout(() => { M.bloquejat = false; seguentMates(); }, 1300);
+    } else if (M.intents === 0) {
+      M.intents = 1; so("no");
+      avis.className = "avis no"; avis.textContent = "Gairebé! Torna-ho a provar";
+      const c = document.querySelector(".mates-pregunta"); c.classList.remove("malament"); void c.offsetWidth; c.classList.add("malament");
+      M.escrit = ""; const e = document.getElementById("escrit"); e.textContent = "?"; e.classList.add("buit");
+    } else {
+      M.ratxa = 0; M.pendents.push(false); so("no");
+      avis.className = "avis no"; avis.textContent = "Era " + M.actual[1] + ". Seguim!";
+      const e = document.getElementById("escrit"); e.textContent = M.actual[1]; e.classList.add("solucio");
+      M.bloquejat = true;
+      setTimeout(() => { M.bloquejat = false; seguentMates(); }, 2000);
+    }
+    if (M.pendents.length >= 5) enviaResultats();      // es desa de cinc en cinc, no a cada tecla
   }
 
   // ---------------------------------------------------------------- partida

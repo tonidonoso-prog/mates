@@ -143,6 +143,26 @@ img { user-select: none; -webkit-user-drag: none; }
 .avis.si { color: #138A6A; } .avis.no { color: var(--tomata); }
 .sortir { justify-self: center; font-family: var(--titol); color: var(--tinta-suau); font-size: 1.05rem; padding: 8px 14px; }
 
+/* ---------- mates ---------- */
+.xips { margin-left: auto; display: flex; gap: 8px; }
+.xip { background: var(--blanc); border-radius: 999px; padding: 6px 12px; font-family: var(--titol); font-size: 1.05rem; box-shadow: var(--ombra); }
+.ops { display: flex; flex-wrap: wrap; gap: 8px; margin: -12px 0 18px; }
+.op-tria { font-family: var(--titol); font-size: 1.05rem; padding: 10px 16px; border-radius: 18px; background: rgba(255, 255, 255, .7); color: var(--tinta-suau); }
+.op-tria[aria-pressed="true"] { background: var(--raim); color: var(--blanc); box-shadow: var(--gruix), 0 6px 10px -6px rgba(0, 0, 0, .4); }
+.exercici { display: grid; gap: 12px; max-width: 520px; margin: 0 auto; }
+.mates-pregunta { padding: 26px 14px; }
+.mates-pregunta.encert { animation: bona 700ms cubic-bezier(.3, 1.6, .5, 1); }
+.mates-pregunta.malament { animation: no 420ms; }
+.operacio { font-family: var(--titol); font-size: clamp(2.6rem, 13vw, 4.6rem); margin: 0; line-height: 1.1; white-space: nowrap; }
+.escrit { display: inline-block; min-width: 1.6em; padding: 0 .2em; border-radius: 18px; background: #F1ECFF; color: var(--raim); }
+.escrit.buit { color: rgba(122, 90, 240, .45); }
+.escrit.solucio { background: #DDF8EE; color: #138A6A; }
+.teclat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tecla { font-family: var(--titol); font-size: 2rem; min-height: 64px; border-radius: 22px; background: var(--blanc); color: var(--tinta);
+  box-shadow: inset 0 -7px 0 rgba(59, 42, 92, .14), var(--ombra); }
+.tecla.ok { background: #12A982; color: var(--blanc); box-shadow: var(--gruix), var(--ombra); }
+.tecla.esborra { background: #FFE3E0; color: var(--tomata); }
+
 /* ---------- final ---------- */
 .final { text-align: center; display: grid; gap: 12px; justify-items: center; padding-top: 10px; }
 .final .mascota { width: 170px; }

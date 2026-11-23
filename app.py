@@ -275,6 +275,9 @@ def medalles_guanyades(dies):
     return [m for m in MEDALLES if m[4](ds)]
 
 
+MOSTRA_MEDALLES = False      # calendari i medalles: amagats per decisio del Toni (24 nov 2026)
+
+
 def marca_avui():
     """Es crida a cada exercici fet (encertat o no: compta l'esforc). El primer
     del dia dona la medalla del dia i, si toca, alguna medalla especial."""
@@ -285,11 +288,13 @@ def marca_avui():
     abans = {m[0] for m in medalles_guanyades(ss.dies)}
     ss.dies = sorted(set(ss.dies) | {dia})
     n = len(ss.dies)
-    if n == 1:      # el primer dia, un sol missatge (abans sortien dos que deien el mateix)
+    if not MOSTRA_MEDALLES:
+        pass        # sense avisos de medalla (24 nov 2026, el Toni va treure el calendari i les medalles)
+    elif n == 1:      # el primer dia, un sol missatge (abans sortien dos que deien el mateix)
         ss.avisos.append(("⭐ 🌱", "LA TEVA PRIMERA MEDALLA!", "CADA DIA QUE JUGUIS EN GUANYES UNA"))
     else:
         ss.avisos.append(("⭐", "MEDALLA DEL DIA!", f"JA EN TENS {n}"))
-    for m in medalles_guanyades(ss.dies):
+    for m in medalles_guanyades(ss.dies) if MOSTRA_MEDALLES else []:
         if m[0] not in abans and m[0] != "primer":
             ss.avisos.append((m[1], "NOVA MEDALLA!", m[2]))
     if ss.jugador and ss.base is not None:
@@ -3285,6 +3290,20 @@ IMG_BLOC = {"Mates": "mates", "Calcul": "calcul", "Lectura": "lectura", "Lletres
             "Repte": "repte"}
 
 
+def compta_respostes(respostes):
+    """Suma un grapat de respostes i desa UNA sola vegada (el servidor castiga les rafegues)."""
+    ss = st.session_state
+    for r in respostes:
+        if r:
+            ss.punts += 1; ss.encerts += 1; ss.ratxa += 1
+            ss.millor_ratxa = max(ss.millor_ratxa, ss.ratxa)
+        else:
+            ss.errors += 1; ss.ratxa = 0
+    if respostes:
+        marca_avui()
+        sync_progres()
+
+
 def nova_cara():
     ss = st.session_state
     st.markdown(
@@ -3297,13 +3316,29 @@ def nova_cara():
                 "nou": b in NOU_FINS and avui() <= NOU_FINS[b]} for _, nom, b, desc in BLOCKS],
         categories=[{"id": c, "nom": nom.split(" ", 1)[1], "img": f"cat_{c}",
                      "temes": [{"id": t, "nom": l} for t, l in CT.temes_de(c)]} for c, nom in CT.CATEGORIES],
-        nivell=ss.diff, nivells=[d for d, _ in DIFFS], medalles=len(ss.dies), records=ss.cq_records,
-        n_preguntes=CONCURS_N, partida=ss.get("nou_partida"),
+        nivell=ss.diff, nivells=[d for d, _ in DIFFS], records=ss.cq_records,
+        n_preguntes=CONCURS_N, partida=ss.get("nou_partida"), lot=ss.get("nou_lot"),
         avisos={"n": ss.get("nou_avisos_n", 0), "llista": ss.get("nou_avisos", [])})
+    args["ack"] = ss.get("nou_fets", [])[-60:]
     val = _AVENTURA(key="aventura", default=None, **args)
     if not isinstance(val, dict) or val.get("n") == ss.get("nou_ultim"):
         return
     ss.nou_ultim = val["n"]
+    fets = ss.setdefault("nou_fets", [])
+    nou = False
+    for a in val.get("accions", [])[:20]:
+        if not isinstance(a, dict) or a.get("id") in fets:
+            continue                          # ja feta (el navegador la reenvia fins que la confirmem)
+        fets.append(a.get("id"))
+        _fes_accio(a)
+        nou = True
+    ss.nou_fets = fets[-60:]
+    if nou:
+        st.rerun()
+
+
+def _fes_accio(val):
+    ss = st.session_state
     accio = val.get("accio")
     if accio == "bloc" and val.get("bloc") in NOM_BLOC:
         start_block(val["bloc"])
@@ -3318,17 +3353,16 @@ def nova_cara():
         nivell = val.get("nivell") if val.get("nivell") in CONCURS_SEGONS else ss.diff
         ss.nou_partida = {"id": val.get("id"), "tema": tema, "nivell": nivell, "segons": CONCURS_SEGONS[nivell],
                           "preguntes": cq_tria(tema, nivell)}
+    elif accio == "lot" and val.get("joc") == "mates":
+        # tanda de 20 exercicis de MATES (el mateix generador de sempre)
+        op = val.get("op") if val.get("op") in {m for _, m, _ in OPS} else "Sumes"
+        nivell = val.get("nivell") if val.get("nivell") in CONCURS_SEGONS else ss.diff
+        ss.nou_lot = {"id": val.get("id"), "joc": "mates", "op": op, "nivell": nivell,
+                      "problemes": [list(make_math(nivell, op)) for _ in range(20)]}
+    elif accio == "resultats":
+        compta_respostes(val.get("respostes", [])[:20])
     elif accio == "final":
-        # es compta tot alhora i es desa una sola vegada (el servidor castiga les rafegues)
-        for r in val.get("respostes", [])[:CONCURS_N]:
-            if r:
-                ss.punts += 1; ss.encerts += 1; ss.ratxa += 1
-                ss.millor_ratxa = max(ss.millor_ratxa, ss.ratxa)
-            else:
-                ss.errors += 1; ss.ratxa = 0
-        if val.get("respostes"):
-            marca_avui()
-            sync_progres()
+        compta_respostes(val.get("respostes", [])[:CONCURS_N])
         clau = f"{val.get('tema')}|{val.get('nivell')}"
         ss.cq_records[clau] = max(ss.cq_records.get(clau, 0), int(val.get("punts") or 0))
         ss.nou_partida = None
@@ -3337,7 +3371,6 @@ def nova_cara():
             ss.nou_avisos_n = ss.get("nou_avisos_n", 0) + 1
     elif accio == "antic":
         st.query_params.pop("nou", None)
-    st.rerun()
 
 
 if st.query_params.get("nou") == "1" and st.session_state.current_block == "Home":
@@ -3376,14 +3409,8 @@ if st.session_state.current_block == "Home":
             f"<div class='chip'>✅ ENCERTS: {round(100 * s.encerts / total)}%</div>"
             f"<div class='chip'>🔥 MILLOR RATXA: {s.millor_ratxa}</div></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
-    medalles_txt = f" · ⭐ {len(s.dies)}" if s.dies else ""
-    st.button(f"📅 EL MEU CALENDARI I MEDALLES{medalles_txt}", key="home_cal", use_container_width=True,
-              on_click=lambda: st.session_state.update(current_block="Calendari", cal_mes=None))
-    st.markdown("<br>", unsafe_allow_html=True)
-    n = len(st.session_state.dies)
-    hola = (f"Portes {n} medalla del dia. " if n == 1 else f"Portes {n} medalles del dia. " if n else "")
-    st.caption(hola + "Cada dia que facis exercicis en guanyes una. El calendari es guarda en aquest "
-               "mòbil o tauleta, sense cap nom ni cap dada personal.")
+    # 24 nov 2026: fora "El meu calendari i medalles" (decisio del Toni). Els dies es segueixen
+    # apuntant per dins (no es veuen), per si algun dia es torna a voler.
     st.markdown("<p style='font-size:0.7rem; opacity:0.6; margin-top:14px;'>Animacions: Noto Emoji "
                 "(Google, CC BY 4.0) · Dibuixos: OpenMoji (CC BY-SA 4.0)</p>", unsafe_allow_html=True)
     if st.session_state.db_error:
