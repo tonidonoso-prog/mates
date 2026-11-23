@@ -36,7 +36,20 @@ for tema in ("sumes", "restes", "taules", "calcul", "animals", "lletra", "barrej
                 for i, x in enumerate(o):
                     w = paraula.replace("_", x)
                     assert (w in conegudes) == (i == q["correcta"]), (q, w)
-print("generador OK")
+# 23 nov 2026: tots els temes (70) i les barreges donen partides senceres de 10 preguntes diferents
+CT = ns["CT"]
+tots = [t for _, t in ns["CONCURS_TEMES"]]
+assert len([t for t, _, _ in CT.TEMES]) >= 50, len(CT.TEMES)
+for tema in tots:
+    for diff in ("Fàcil", "Normal", "Difícil"):
+        for _ in range(3):
+            qs = ns["concurs_preguntes"](tema, diff, 10)
+            assert len(qs) == 10, (tema, diff, len(qs))
+            for q in qs:
+                o = q["opcions"]
+                assert len(o) == 4 and len(set(o)) == 4 and 0 <= q["correcta"] < 4 and all(o), (tema, q)
+                assert q["text"] == q["text"].upper(), (tema, q)
+print("generador OK:", len(tots), "temes i barreges")
 
 
 # --------------------------------------------------------------------- partida
@@ -54,6 +67,7 @@ def html(at):
 m = run(AppTest.from_file("app.py", default_timeout=60))
 m.button(key="home_Concurs").click(); run(m)
 m.button(key="cq_sol").click(); run(m)
+m.button(key="cq_cat_mates").click(); run(m)
 m.button(key="cq_tema_sumes").click(); run(m)
 m.button(key="conc_op_0").click(); run(m)
 assert len(m.session_state.dies) == 1
@@ -72,9 +86,13 @@ at.button(key="home_Concurs").click(); run(at)
 keys = [b.key for b in at.button]
 assert "cq_sol" in keys and "cq_grup" in keys, keys
 at.button(key="cq_sol").click(); run(at)
-# en solitari: sense codis ni mestres, directament els temes, i amb nivells
+# en solitari: sense codis ni mestres; primer la categoria (o barreja de tot), i amb nivells
 keys = [b.key for b in at.button]
-assert "cq_tema_taules" in keys and "ctl_lvl_dificil" in keys
+assert "cq_cat_mates" in keys and "cq_tema_barreja" in keys and "ctl_lvl_dificil" in keys, keys
+assert len([k for k in keys if k and k.startswith("cq_cat_")]) == len(ns["CT"].CATEGORIES)
+at.button(key="cq_cat_mates").click(); run(at)
+keys = [b.key for b in at.button]
+assert "cq_tema_taules" in keys and "cq_tema_barreja_mates" in keys
 assert not any(k and ("cq_rol" in k or "cq_entra" in k or "cq_crea" in k) for k in keys)
 assert [t.key for t in at.text_input] == ["dispositiu"], "no s'ha d'haver d'escriure cap codi"
 at.button(key="ctl_lvl_normal").click(); run(at)
@@ -139,6 +157,8 @@ print("record:", boto.label)
 at.button(key="cq_tema_sumes").click(); run(at)
 at.button(key="cq_surt").click(); run(at)
 assert at.session_state.cq is None
+at.button(key="cq_cat_torna").click(); run(at)
+at.button(key="cq_cat_natura").click(); run(at)
 at.button(key="cq_tema_animals").click(); run(at)
 at.button(key="ctl_lvl_dificil").click(); run(at)
 assert at.session_state.cq is None

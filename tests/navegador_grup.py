@@ -59,6 +59,7 @@ with sync_playwright() as p:
     mestre.locator(".st-key-home_Concurs button").first.click(); espera(mestre, ".st-key-cq_grup button")
     mestre.screenshot(path=f"{CAP}/grup_0_triar_desk.png")
     mestre.locator(".st-key-cq_grup button").first.click(); espera(mestre, ".st-key-cg_crea button")
+    mestre.locator(".st-key-cg_cat label").filter(has_text="MATES").first.click(); time.sleep(0.8)
     mestre.locator(".st-key-cg_tema label").filter(has_text="SUMES").first.click(); time.sleep(0.6)
     mestre.locator(".st-key-cg_n label").filter(has_text=re.compile(r"^5$")).first.click(); time.sleep(0.6)
     mestre.locator(".st-key-cg_seg label").filter(has_text=re.compile(r"^20$")).first.click(); time.sleep(0.6)

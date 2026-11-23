@@ -97,7 +97,10 @@ mestre = run(AppTest.from_file("app.py", default_timeout=60))
 mestre.button(key="home_Concurs").click(); run(mestre)
 mestre.button(key="cq_grup").click(); run(mestre)
 assert "pantalla gran" in html(mestre)
-mestre.session_state.cg_tema = "sumes"
+# 23 nov 2026: primer la categoria; el tema surt de la llista d'aquella categoria
+mestre.radio(key="cg_cat").set_value("mates"); run(mestre)
+assert "sumes" in mestre.radio(key="cg_tema").options or "➕ SUMES" in mestre.radio(key="cg_tema").options
+mestre.radio(key="cg_tema").set_value("sumes"); run(mestre)
 mestre.session_state.cg_nivell = "Fàcil"
 mestre.session_state.cg_n = 5
 mestre.session_state.cg_seg = 10
@@ -287,6 +290,7 @@ s = run(AppTest.from_file("app.py", default_timeout=60))
 s.session_state.dies = [ns["avui"]().isoformat()]
 s.button(key="home_Concurs").click(); run(s)
 s.button(key="cq_sol").click(); run(s)
+s.button(key="cq_cat_mates").click(); run(s)
 assert "cq_tema_sumes" in [b.key for b in s.button] and "ctl_lvl_dificil" in [b.key for b in s.button]
 s.button(key="cq_tema_sumes").click(); run(s)
 g = s.session_state.cq

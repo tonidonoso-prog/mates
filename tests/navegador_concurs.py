@@ -39,7 +39,8 @@ with sync_playwright() as p:
         pg.screenshot(path=f"{CAP}/cq_home_{tag}.png", full_page=True)
         boto.click(); espera(pg, ".st-key-cq_sol button")
         # 18 nov 2026: primer es tria jugar sol o en grup
-        pg.locator(".st-key-cq_sol button").first.click(); espera(pg, ".st-key-cq_tema_animals button")
+        pg.locator(".st-key-cq_sol button").first.click(); espera(pg, ".st-key-cq_cat_natura button")
+        pg.locator(".st-key-cq_cat_natura button").first.click(); espera(pg, ".st-key-cq_tema_animals button")
         assert pg.locator("input:visible").count() == 0, "no hi ha d'haver cap camp per escriure codis"
         pg.locator(".st-key-ctl_lvl_dificil button").first.click(); time.sleep(3)
         pg.screenshot(path=f"{CAP}/cq_temes_{tag}.png", full_page=True)

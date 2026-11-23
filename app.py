@@ -9,6 +9,8 @@ import streamlit.components.v1 as components
 import random
 import time
 import json
+import re
+import concurs_temes as CT
 import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -627,9 +629,11 @@ def genera_golut(diff, op, evita=()):
 # Primera versio: un mestre creava la partida i els nens hi entraven amb un codi. El Toni
 # no vol codis ni dependre d'un adult ("no hagas password"; "¿no pueden jugar solos?").
 # Sense classificacio ni comparacio amb ningu (decisio del 25 set 2026).
-CONCURS_TEMES = [("🎲 BARREJA", "barreja"), ("➕ SUMES", "sumes"), ("➖ RESTES", "restes"),
-                 ("✖️ TAULES", "taules"), ("💡 CÀLCUL MENTAL", "calcul"),
-                 ("🐾 ANIMALS", "animals"), ("🔤 LLETRA QUE FALTA", "lletra")]
+# 23 nov 2026: 70 temes en 12 categories (concurs_temes.py). Es tria primer la categoria.
+CONCURS_TEMES = ([("🎲 BARREJA DE TOT", "barreja")]
+                 + [(f"🎲 BARREJA · {nom.split(' ', 1)[1]}", f"barreja_{cat}") for cat, nom in CT.CATEGORIES]
+                 + [(label, tid) for tid, label, _ in CT.TEMES])
+CONCURS_DE_APP = ("sumes", "restes", "taules", "calcul", "animals", "lletra")   # es generen aqui
 # formes i colors propis (no els de cap joc comercial)
 CONCURS_FORMES = [("★", "#8854D0", "#5F3A99"), ("●", "#FA8231", "#B85A1C"),
                   ("▲", "#0FB9B1", "#0A817B"), ("■", "#EB3B8F", "#A82563")]
@@ -668,7 +672,11 @@ def _opcions_numeriques(ans):
 def concurs_pregunta(tema, diff):
     """{text, emoji, opcions (4), correcta (index)}. Tot generat: mai s'acaben."""
     if tema == "barreja":
-        tema = random.choice([t for _, t in CONCURS_TEMES if t != "barreja"])
+        tema = random.choice([t for t, _, _ in CT.TEMES])
+    elif tema.startswith("barreja_"):
+        tema = random.choice([t for t, _ in CT.temes_de(tema[len("barreja_"):])])
+    if tema not in CONCURS_DE_APP:
+        return CT.pregunta(tema, diff)
     emoji = ""
     if tema in ("sumes", "restes"):
         text, ans = make_math(diff, "Sumes" if tema == "sumes" else "Restes")
@@ -725,7 +733,7 @@ def concurs_preguntes(tema, diff, n):
     out, vistes = [], set()
     for _ in range(n * 30):
         q = concurs_pregunta(tema, diff)
-        clau = q["text"] + q["emoji"]
+        clau = q["text"] + q["emoji"] + q["opcions"][q["correcta"]]   # "el mes gran" es repeteix amb altres numeros
         if clau in vistes or len(set(q["opcions"])) < 4:
             continue
         vistes.add(clau)
@@ -953,7 +961,8 @@ LECTURA_RITME = {"Fàcil": (1.5, 0.50), "Normal": (1.5, 0.52), "Difícil": (1.5,
 def local_css():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Bungee&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Bungee&family=Noto+Color+Emoji&display=swap');
+    .bandera { font-family: 'Noto Color Emoji', sans-serif; }
     html, body, [class*="css"] { font-family: 'Outfit', sans-serif; }
     .stApp { background: linear-gradient(135deg, #FFDEE9 0%, #B5FFFC 100%); background-attachment: fixed; }
     /* dins de cada columna, el botó i la seva descripció han d'anar junts;
@@ -1065,6 +1074,8 @@ def local_css():
     /* el llenç de caligrafia s'ajusta sol: el contenidor l'ha de seguir */
     div[data-testid="stElementContainer"]:has(> iframe[data-testid="stIFrame"]) { height: auto !important; }
     @media (max-width: 767px) { .st-key-caligrafia iframe[data-testid="stIFrame"] { max-height: 300px; } }
+    /* boto 🔊 ESCOLTA del concurs: nomes l'alcada del boto */
+    .st-key-escolta iframe[data-testid="stIFrame"] { height: 58px !important; min-height: 0 !important; }
     /* boto invisible que la sopa de lletres clica sola quan s'han trobat totes les paraules */
     .st-key-sopa_done { height: 0 !important; min-height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
     .st-key-sopa_done button { height: 1px !important; min-height: 0 !important; padding: 0 !important; opacity: 0 !important; }
@@ -2410,7 +2421,7 @@ DEFAULTS = {
     'base': None, 'jugador_actiu': '', 'dies': [], 'avisos': [], 'cal_mes': None, 'lletra_idx': 0, 'lletra_set': 'Lletres',
     'sopa': None, 'sopa_n': 0, 'cq': None, 'cq_records': {}, 'golut': None, 'golut_n': 0, 'golut_op': 'suma', 'penjat': None, 'penjat_n': 0, 'penjat_vistes': [], 'memory': None, 'memory_n': 0, 'dibuix_idx': 0,
     # concurs: 'sol' o 'grup'; en grup, la pantalla gran es 'mestre' i cada mobil 'jugador'
-    'cq_mode': None, 'cg_rol': None, 'cg_pin': '', 'cg_pid': '', 'cg_edita': False, 'cg_avis': '',
+    'cq_mode': None, 'cq_cat': None, 'cg_cat': 'tot', 'cg_rol': None, 'cg_pin': '', 'cg_pid': '', 'cg_edita': False, 'cg_avis': '',
     'cg_tema': 'barreja', 'cg_nivell': 'Fàcil', 'cg_n': 10, 'cg_seg': 20,
 }
 for k, v in DEFAULTS.items():
@@ -2652,9 +2663,44 @@ def _cq_ops_html(q, triada=None):
     return f"<div class='cq-ops'>{''.join(caixes)}</div>"
 
 
+def _cq_emoji_html(q, mida=""):
+    """El dibuix de la pregunta. Si n'hi ha molts (comptar, series), mes petit perque hi capiguen."""
+    if not q["emoji"]:
+        return ""
+    llarg = len(re.sub(r"<[^>]+>|\s|\ufe0f", "", q["emoji"])) > 4
+    estil = "font-size:clamp(1.8rem, 8vw, 3.2rem);" if llarg else mida
+    return f"<div class='cq-emoji' style='{estil}'>{q['emoji']}</div>"
+
+
 def _cq_pregunta_html(q):
-    emoji = f"<div class='cq-emoji'>{q['emoji']}</div>" if q["emoji"] else ""
+    emoji = _cq_emoji_html(q)
     return f"{emoji}<div class='cq-preg'>{q['text']}</div>"
+
+
+def _text_veu(q):
+    """El que llegeix el boto 🔊: la pregunta i les quatre respostes, sense emojis ni simbols."""
+    t = q["text"].lower()
+    for a, b in (("×", " per "), ("+", " més "), ("−", " menys "), ("= ?", ", quant fa?"), ("→", " ")):
+        t = t.replace(a, b)
+    ops = [re.sub(r"[^\w\s,.'€·:-]", "", o).strip().lower() for o in q["opcions"]]
+    return t + ". " + ". ".join(o for o in ops if o) + "."
+
+
+def boto_escolta(q):
+    """🔊 Llegeix la pregunta en veu alta (veu del navegador, en catala si n'hi ha). Per als que encara
+    llegeixen a poc a poc: al benchmark de concursos, la lectura en veu alta es de pagament."""
+    with st.container(key="escolta"):
+        _boto_escolta_html(q)
+
+
+def _boto_escolta_html(q):
+    components.html(
+        "<div style='text-align:center;margin:0'><button id='b' style='font-family:sans-serif;font-weight:700;font-size:20px;border:0;border-radius:30px;"
+        "padding:10px 22px;background:#2D3436;color:white;cursor:pointer;'>🔊 ESCOLTA</button></div><script>"
+        "var t=" + json.dumps(_text_veu(q)) + ";document.getElementById('b').onclick=function(){"
+        "var s=window.speechSynthesis;if(!s)return;s.cancel();var u=new SpeechSynthesisUtterance(t);"
+        "u.lang='ca-ES';var v=s.getVoices().filter(function(x){return /^ca/i.test(x.lang);})[0];"
+        "if(v)u.voice=v;u.rate=0.9;s.speak(u);};</script>", height=60)
 
 
 def _cq_punts(n):
@@ -2722,6 +2768,7 @@ def concurs_partida():
                     f"<span class='cq-temps{' poc' if queda <= 5 else ''}'>{queda}</span>"
                     f"<span>⭐ {_cq_punts(g['punts'])}</span></div>" + _cq_pregunta_html(q),
                     unsafe_allow_html=True)
+        boto_escolta(q)
         for fila in ((0, 1), (2, 3)):
             cols = st.columns(2)
             for col, i in zip(cols, fila):
@@ -2764,16 +2811,31 @@ def concurs_solo():
         concurs_partida()
         st.button("⏹️ SORTIR", key="cq_surt", on_click=lambda: ss.update(cq=None))
         return
-    st.markdown(f"<div class='cq-info'>Tria un tema: {CONCURS_N} preguntes, "
-                f"{CONCURS_SEGONS[ss.diff]} segons cadascuna. Com més ràpid, més punts!</div>",
-                unsafe_allow_html=True)
-    for i in range(0, len(CONCURS_TEMES), 2):
+    def boto_tema(col, label, tema):
+        rec = ss.cq_records.get(f"{tema}|{ss.diff}")
+        col.button(label + (f" · 🏆 {_cq_punts(rec)}" if rec else ""), key=f"cq_tema_{tema}",
+                   use_container_width=True, on_click=_cq_comenca, args=(tema,))
+
+    if not ss.cq_cat:
+        st.markdown(f"<div class='cq-info'>Tria una categoria i després un tema: {CONCURS_N} preguntes, "
+                    f"{CONCURS_SEGONS[ss.diff]} segons cadascuna. Com més ràpid, més punts!</div>",
+                    unsafe_allow_html=True)
+        boto_tema(st, "🎲 BARREJA DE TOT", "barreja")
+        for i in range(0, len(CT.CATEGORIES), 2):
+            cols = st.columns(2)
+            for col, (cat, nom) in zip(cols, CT.CATEGORIES[i:i + 2]):
+                col.button(f"{nom} · {len(CT.temes_de(cat))}", key=f"cq_cat_{cat}", use_container_width=True,
+                           on_click=lambda c=cat: ss.update(cq_cat=c))
+        st.button("🔙 TORNAR", key="cq_sol_torna", on_click=lambda: ss.update(cq_mode=None, cq=None))
+        return
+    cat = ss.cq_cat
+    st.markdown(f"<div class='cq-info'><b>{CT.NOM_CATEGORIA[cat]}</b> · tria un tema</div>", unsafe_allow_html=True)
+    temes = [(f"🎲 BARREJA", f"barreja_{cat}")] + [(l, t) for t, l in CT.temes_de(cat)]
+    for i in range(0, len(temes), 2):
         cols = st.columns(2)
-        for col, (label, tema) in zip(cols, CONCURS_TEMES[i:i + 2]):
-            rec = ss.cq_records.get(f"{tema}|{ss.diff}")
-            col.button(label + (f" · 🏆 {_cq_punts(rec)}" if rec else ""), key=f"cq_tema_{tema}",
-                       use_container_width=True, on_click=_cq_comenca, args=(tema,))
-    st.button("🔙 TORNAR", key="cq_sol_torna", on_click=lambda: ss.update(cq_mode=None, cq=None))
+        for col, (label, tema) in zip(cols, temes[i:i + 2]):
+            boto_tema(col, label, tema)
+    st.button("🔙 CATEGORIES", key="cq_cat_torna", on_click=lambda: ss.update(cq_cat=None))
 
 
 # ------------------------------------------------------ CONCURS EN GRUP: PANTALLES
@@ -2859,6 +2921,7 @@ def cg_prepara_edicio(sa):
     """Omple el formulari amb la configuracio de la sala per canviar-la (la gent es queda)."""
     ss = st.session_state
     ss.cg_tema = sa["tema"]
+    ss.cg_cat = CT.categoria_de(sa["tema"]) or "tot"
     ss.cg_nivell, ss.cg_n, ss.cg_seg, ss.cg_edita = sa["nivell"], sa["n"], sa["segons"], True
 
 
@@ -2939,7 +3002,7 @@ def cg_mestre():
         return
 
     q = sa["preguntes"][idx]
-    emoji = f"<div class='cq-emoji'>{q['emoji']}</div>" if q["emoji"] else ""
+    emoji = _cq_emoji_html(q)
     if fase == "pregunta":
         queda = max(0, int(round(sa["segons"] - (time.time() - sa["t0"]))))
         respostes = sum(1 for j in jug.values() if idx in j["respostes"])
@@ -2947,6 +3010,7 @@ def cg_mestre():
                     f"<span class='cq-temps{' poc' if queda <= 5 else ''}'>{queda}</span>"
                     f"<span class='cg-rebudes'>📥 {respostes} DE {len(jug)}</span></div>"
                     + emoji + f"<div class='cg-preg'>{q['text']}</div>" + cg_ops_html(q), unsafe_allow_html=True)
+        boto_escolta(q)
         st.button("⏭️ JA N'HI HA PROU", key="cg_m_tanca", use_container_width=True,
                   on_click=sala_avanca, args=(pin, "pregunta", idx))
         return
@@ -2956,7 +3020,7 @@ def cg_mestre():
     bons, n = vots[q["correcta"]], len(jug)
     frase = ("TOTHOM L'HA ENCERTADA! 🎉" if n and bons == n else
              f"{bons} DE {n} L'HAN ENCERTADA!" if bons else "AQUESTA COSTAVA! 💪")
-    emoji = f"<div class='cq-emoji' style='font-size:3.2rem;'>{q['emoji']}</div>" if q["emoji"] else ""
+    emoji = _cq_emoji_html(q, "font-size:3.2rem;")
     st.markdown(f"<div class='cg-cap'><span>PREGUNTA {idx + 1} DE {n_q}</span></div>"
                 + emoji + f"<div class='cg-preg petita'>{q['text']}</div>", unsafe_allow_html=True)
     c1, c2 = st.columns([3, 2], gap="large")
@@ -3064,7 +3128,13 @@ def cg_tria():
                     "res i a cadascú li toca un animal.</div>", unsafe_allow_html=True)
     # st.radio i no st.pills/segmented_control: l'AppTest de Streamlit 1.50 no sap llegir-los (18 nov 2026)
     noms = {t: l for l, t in CONCURS_TEMES}
-    st.radio("Tema", [t for _, t in CONCURS_TEMES], key="cg_tema", format_func=noms.get, horizontal=True)
+    cats = {"tot": "🎲 TOT BARREJAT", **CT.NOM_CATEGORIA}
+    st.radio("Categoria", list(cats), key="cg_cat", format_func=cats.get, horizontal=True)
+    opcions = (["barreja"] if ss.cg_cat == "tot" else
+               [f"barreja_{ss.cg_cat}"] + [t for t, _ in CT.temes_de(ss.cg_cat)])
+    if ss.cg_tema not in opcions:
+        ss.cg_tema = opcions[0]
+    st.radio("Tema", opcions, key="cg_tema", format_func=noms.get, horizontal=True)
     st.radio("Nivell", [d for d, _ in DIFFS], key="cg_nivell", horizontal=True)
     c1, c2 = st.columns(2)
     with c1:
